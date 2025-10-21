@@ -68,9 +68,12 @@ export default function Index() {
     return saved ? JSON.parse(saved) : defaultPositions;
   });
   const [dragging, setDragging] = useState<string | null>(null);
+  const [resizing, setResizing] = useState<{ id: string; corner: 'se' | 'sw' | 'ne' | 'nw' } | null>(null);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  const SNAP_THRESHOLD = 1.5;
 
   const getBoothColor = (status: BoothStatus) => {
     switch (status) {
@@ -100,9 +103,38 @@ export default function Index() {
     booked: booths.filter(b => b.status === 'booked').length,
   };
 
+  const snapToNeighbors = (id: string, x: number, y: number, width: number, height: number) => {
+    let snappedX = x;
+    let snappedY = y;
+
+    positions.forEach(pos => {
+      if (pos.id === id) return;
+
+      const right = x + width;
+      const bottom = y + height;
+      const posRight = pos.x + pos.width;
+      const posBottom = pos.y + pos.height;
+
+      if (Math.abs(y - pos.y) < SNAP_THRESHOLD) snappedY = pos.y;
+      if (Math.abs(bottom - posBottom) < SNAP_THRESHOLD) snappedY = pos.y + pos.height - height;
+      
+      if (Math.abs(x - pos.x) < SNAP_THRESHOLD) snappedX = pos.x;
+      if (Math.abs(right - posRight) < SNAP_THRESHOLD) snappedX = pos.x + pos.width - width;
+
+      if (Math.abs(right - pos.x) < SNAP_THRESHOLD && Math.abs(y - pos.y) < 5) snappedX = pos.x - width;
+      if (Math.abs(x - posRight) < SNAP_THRESHOLD && Math.abs(y - pos.y) < 5) snappedX = posRight;
+      
+      if (Math.abs(bottom - pos.y) < SNAP_THRESHOLD && Math.abs(x - pos.x) < 5) snappedY = pos.y - height;
+      if (Math.abs(y - posBottom) < SNAP_THRESHOLD && Math.abs(x - pos.x) < 5) snappedY = posBottom;
+    });
+
+    return { x: snappedX, y: snappedY };
+  };
+
   const handleMouseDown = (e: React.MouseEvent, boothId: string) => {
     if (!editMode) return;
     e.preventDefault();
+    e.stopPropagation();
     
     const container = containerRef.current;
     if (!container) return;
@@ -118,23 +150,83 @@ export default function Index() {
     setDragOffset({ x: offsetX, y: offsetY });
   };
 
+  const handleResizeMouseDown = (e: React.MouseEvent, boothId: string, corner: 'se' | 'sw' | 'ne' | 'nw') => {
+    if (!editMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setResizing({ id: boothId, corner });
+  };
+
   const handleMouseMove = (e: React.MouseEvent) => {
-    if (!editMode || !dragging) return;
+    if (!editMode) return;
     
     const container = containerRef.current;
     if (!container) return;
     
     const rect = container.getBoundingClientRect();
-    const x = Math.max(0, Math.min(95, (e.clientX - rect.left) / rect.width * 100 - dragOffset.x));
-    const y = Math.max(0, Math.min(95, (e.clientY - rect.top) / rect.height * 100 - dragOffset.y));
-    
-    setPositions(prev => prev.map(p => 
-      p.id === dragging ? { ...p, x, y } : p
-    ));
+    const mouseX = (e.clientX - rect.left) / rect.width * 100;
+    const mouseY = (e.clientY - rect.top) / rect.height * 100;
+
+    if (dragging) {
+      const position = positions.find(p => p.id === dragging);
+      if (!position) return;
+
+      let x = Math.max(0, Math.min(100 - position.width, mouseX - dragOffset.x));
+      let y = Math.max(0, Math.min(100 - position.height, mouseY - dragOffset.y));
+
+      const snapped = snapToNeighbors(dragging, x, y, position.width, position.height);
+      x = snapped.x;
+      y = snapped.y;
+
+      setPositions(prev => prev.map(p => 
+        p.id === dragging ? { ...p, x, y } : p
+      ));
+    } else if (resizing) {
+      const position = positions.find(p => p.id === resizing.id);
+      if (!position) return;
+
+      const newPos = { ...position };
+
+      switch (resizing.corner) {
+        case 'se':
+          newPos.width = Math.max(2, mouseX - position.x);
+          newPos.height = Math.max(2, mouseY - position.y);
+          break;
+        case 'sw':
+          const newWidth = Math.max(2, position.x + position.width - mouseX);
+          newPos.x = position.x + position.width - newWidth;
+          newPos.width = newWidth;
+          newPos.height = Math.max(2, mouseY - position.y);
+          break;
+        case 'ne':
+          newPos.width = Math.max(2, mouseX - position.x);
+          const newHeight = Math.max(2, position.y + position.height - mouseY);
+          newPos.y = position.y + position.height - newHeight;
+          newPos.height = newHeight;
+          break;
+        case 'nw':
+          const newW = Math.max(2, position.x + position.width - mouseX);
+          const newH = Math.max(2, position.y + position.height - mouseY);
+          newPos.x = position.x + position.width - newW;
+          newPos.y = position.y + position.height - newH;
+          newPos.width = newW;
+          newPos.height = newH;
+          break;
+      }
+
+      newPos.x = Math.max(0, Math.min(100 - newPos.width, newPos.x));
+      newPos.y = Math.max(0, Math.min(100 - newPos.height, newPos.y));
+
+      setPositions(prev => prev.map(p => 
+        p.id === resizing.id ? newPos : p
+      ));
+    }
   };
 
   const handleMouseUp = () => {
     setDragging(null);
+    setResizing(null);
   };
 
   useEffect(() => {
@@ -268,7 +360,11 @@ export default function Index() {
                 <Icon name="Info" size={20} className="text-primary mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-gray-900">Режим редактирования</p>
-                  <p className="text-xs text-gray-600 mt-1">Перетаскивайте стенды мышью для точного позиционирования. Нажмите "Сохранить" для применения изменений.</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    • Перетаскивайте стенды для позиционирования (автоматическое прилипание)<br/>
+                    • Тяните за углы для изменения размера стенда<br/>
+                    • Нажмите "Сохранить" для применения изменений
+                  </p>
                 </div>
               </div>
             </div>
@@ -292,12 +388,12 @@ export default function Index() {
                 const position = positions.find(p => p.id === booth.id);
                 if (!position) return null;
                 
+                const isActive = dragging === booth.id || resizing?.id === booth.id;
+                
                 return (
-                  <button
+                  <div
                     key={booth.id}
-                    onMouseDown={(e) => handleMouseDown(e, booth.id)}
-                    onClick={() => !editMode && setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 ${editMode ? 'cursor-move hover:ring-4 hover:ring-primary/50' : 'cursor-pointer hover:scale-110 hover:shadow-2xl'} absolute flex items-center justify-center border-2 ${editMode ? 'border-primary' : 'border-white/20'} ${dragging === booth.id ? 'z-50 shadow-2xl ring-4 ring-primary' : 'hover:z-40'}`}
+                    className={`absolute ${isActive ? 'z-50' : 'hover:z-40'}`}
                     style={{
                       left: `${position.x}%`,
                       top: `${position.y}%`,
@@ -305,8 +401,39 @@ export default function Index() {
                       height: `${position.height}%`,
                     }}
                   >
-                    {booth.id}
-                  </button>
+                    <button
+                      onMouseDown={(e) => handleMouseDown(e, booth.id)}
+                      onClick={() => !editMode && setSelectedBooth(booth)}
+                      className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 ${editMode ? 'cursor-move hover:ring-4 hover:ring-primary/50' : 'cursor-pointer hover:scale-110 hover:shadow-2xl'} w-full h-full flex items-center justify-center border-2 ${editMode ? 'border-primary' : 'border-white/20'} ${isActive ? 'shadow-2xl ring-4 ring-primary' : ''}`}
+                    >
+                      {booth.id}
+                    </button>
+                    
+                    {editMode && (
+                      <>
+                        <div
+                          onMouseDown={(e) => handleResizeMouseDown(e, booth.id, 'se')}
+                          className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full cursor-se-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
+                          style={{ transform: 'translate(50%, 50%)' }}
+                        />
+                        <div
+                          onMouseDown={(e) => handleResizeMouseDown(e, booth.id, 'sw')}
+                          className="absolute bottom-0 left-0 w-3 h-3 bg-primary rounded-full cursor-sw-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
+                          style={{ transform: 'translate(-50%, 50%)' }}
+                        />
+                        <div
+                          onMouseDown={(e) => handleResizeMouseDown(e, booth.id, 'ne')}
+                          className="absolute top-0 right-0 w-3 h-3 bg-primary rounded-full cursor-ne-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
+                          style={{ transform: 'translate(50%, -50%)' }}
+                        />
+                        <div
+                          onMouseDown={(e) => handleResizeMouseDown(e, booth.id, 'nw')}
+                          className="absolute top-0 left-0 w-3 h-3 bg-primary rounded-full cursor-nw-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
+                          style={{ transform: 'translate(-50%, -50%)' }}
+                        />
+                      </>
+                    )}
+                  </div>
                 );
               })}
             </div>

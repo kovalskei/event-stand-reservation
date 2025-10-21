@@ -129,6 +129,7 @@ export default function Index() {
   const [draggingGrid, setDraggingGrid] = useState(false);
   const [resizingGrid, setResizingGrid] = useState<'se' | 'sw' | 'ne' | 'nw' | null>(null);
   const [rotatingGrid, setRotatingGrid] = useState(false);
+  const [rotationStart, setRotationStart] = useState<{ angle: number; rotation: number } | null>(null);
   const [snapEnabled, setSnapEnabled] = useState(true);
 
   const SNAP_THRESHOLD = 1.5;
@@ -347,6 +348,7 @@ export default function Index() {
     setDraggingGrid(false);
     setResizingGrid(null);
     setRotatingGrid(false);
+    setRotationStart(null);
   };
 
   useEffect(() => {
@@ -380,11 +382,13 @@ export default function Index() {
       const newWidth = Math.max(5, mouseX - grid.x);
       const newHeight = Math.max(5, mouseY - grid.y);
       setGrid({ ...grid, width: Math.min(100 - grid.x, newWidth), height: Math.min(100 - grid.y, newHeight) });
-    } else if (rotatingGrid) {
+    } else if (rotatingGrid && rotationStart) {
       const centerX = grid.x + grid.width / 2;
       const centerY = grid.y + grid.height / 2;
-      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
-      setGrid({ ...grid, rotation: Math.round(angle / 15) * 15 });
+      const currentAngle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
+      const deltaAngle = currentAngle - rotationStart.angle;
+      const newRotation = rotationStart.rotation + deltaAngle;
+      setGrid({ ...grid, rotation: Math.round(newRotation) });
     }
   };
 
@@ -1101,6 +1105,24 @@ export default function Index() {
                   <div
                     onMouseDown={(e) => {
                       e.stopPropagation();
+                      const container = containerRef.current;
+                      if (!container) return;
+                      
+                      const rect = container.getBoundingClientRect();
+                      const containerWidth = 2400;
+                      const containerHeight = 1200;
+                      
+                      const mouseXInContainer = (e.clientX - rect.left) / zoom;
+                      const mouseYInContainer = (e.clientY - rect.top) / zoom;
+                      
+                      const mouseX = (mouseXInContainer / containerWidth) * 100;
+                      const mouseY = (mouseYInContainer / containerHeight) * 100;
+                      
+                      const centerX = grid.x + grid.width / 2;
+                      const centerY = grid.y + grid.height / 2;
+                      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
+                      
+                      setRotationStart({ angle, rotation: grid.rotation });
                       setRotatingGrid(true);
                     }}
                     className="absolute top-0 left-1/2 w-5 h-5 bg-green-500 rounded-full cursor-grab border-2 border-white shadow-lg hover:scale-125 transition-transform flex items-center justify-center z-10"

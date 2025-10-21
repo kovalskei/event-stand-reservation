@@ -126,6 +126,7 @@ export default function Index() {
   
   const [gridMode, setGridMode] = useState(false);
   const [grid, setGrid] = useState({ x: 10, y: 10, width: 80, height: 60, rotation: 0, rows: 3, cols: 3 });
+  const [gridCellAssignments, setGridCellAssignments] = useState<Record<number, string>>({});
   const [editingGrid, setEditingGrid] = useState(false);
   const [draggingGrid, setDraggingGrid] = useState(false);
   const [resizingGrid, setResizingGrid] = useState<'se' | 'sw' | 'ne' | 'nw' | null>(null);
@@ -574,48 +575,45 @@ export default function Index() {
     const cellHeight = grid.height / grid.rows;
     const updatedPositions = [...positions];
     
-    const totalCells = grid.rows * grid.cols;
-    const boothsToPlace = Math.min(totalCells, booths.length);
+    const assignedBoothIds = Object.values(gridCellAssignments);
     
-    let boothIndex = 0;
-    for (let row = 0; row < grid.rows; row++) {
-      for (let col = 0; col < grid.cols; col++) {
-        if (boothIndex >= boothsToPlace) break;
-        
-        const cellX = grid.x + (col * cellWidth);
-        const cellY = grid.y + (row * cellHeight);
-        
-        const existingIndex = updatedPositions.findIndex(p => p.id === booths[boothIndex].id);
-        
-        if (existingIndex !== -1) {
-          updatedPositions[existingIndex] = {
-            ...updatedPositions[existingIndex],
-            x: cellX,
-            y: cellY,
-            width: cellWidth,
-            height: cellHeight,
-            rotation: grid.rotation
-          };
-        } else {
-          updatedPositions.push({
-            id: booths[boothIndex].id,
-            x: cellX,
-            y: cellY,
-            width: cellWidth,
-            height: cellHeight,
-            rotation: grid.rotation
-          });
-        }
-        
-        boothIndex++;
+    Object.entries(gridCellAssignments).forEach(([cellIndexStr, boothId]) => {
+      const cellIndex = parseInt(cellIndexStr);
+      const row = Math.floor(cellIndex / grid.cols);
+      const col = cellIndex % grid.cols;
+      
+      const cellX = grid.x + (col * cellWidth);
+      const cellY = grid.y + (row * cellHeight);
+      
+      const existingIndex = updatedPositions.findIndex(p => p.id === boothId);
+      
+      if (existingIndex !== -1) {
+        updatedPositions[existingIndex] = {
+          ...updatedPositions[existingIndex],
+          x: cellX,
+          y: cellY,
+          width: cellWidth,
+          height: cellHeight,
+          rotation: grid.rotation
+        };
+      } else {
+        updatedPositions.push({
+          id: boothId,
+          x: cellX,
+          y: cellY,
+          width: cellWidth,
+          height: cellHeight,
+          rotation: grid.rotation
+        });
       }
-    }
+    });
     
     setPositions(updatedPositions);
     setGridMode(false);
+    setGridCellAssignments({});
     toast({
       title: 'Стенды размещены',
-      description: `Размещено ${boothsToPlace} стендов по сетке`,
+      description: `Размещено ${assignedBoothIds.length} стендов по сетке`,
     });
   };
 
@@ -1121,17 +1119,43 @@ export default function Index() {
                     setDraggingGrid(true);
                   }}
                 >
-                  <div className="absolute inset-0 grid pointer-events-none" style={{
+                  <div className="absolute inset-0 grid" style={{
                     gridTemplateRows: `repeat(${grid.rows}, 1fr)`,
                     gridTemplateColumns: `repeat(${grid.cols}, 1fr)`,
                     gap: '0px',
                     padding: '0px'
                   }}>
-                    {Array.from({ length: grid.rows * grid.cols }).map((_, i) => (
-                      <div key={i} className="border border-primary/40 bg-white/20 flex items-center justify-center text-xs text-primary font-bold">
-                        {i + 1}
-                      </div>
-                    ))}
+                    {Array.from({ length: grid.rows * grid.cols }).map((_, i) => {
+                      const assignedBoothId = gridCellAssignments[i];
+                      const assignedBooth = assignedBoothId ? booths.find(b => b.id === assignedBoothId) : null;
+                      const availableBooths = booths.filter(b => !Object.values(gridCellAssignments).includes(b.id) || gridCellAssignments[i] === b.id);
+                      
+                      return (
+                        <div key={i} className="border border-primary/40 bg-white/20 flex items-center justify-center text-xs relative pointer-events-auto group">
+                          <select
+                            value={assignedBoothId || ''}
+                            onChange={(e) => {
+                              const newAssignments = { ...gridCellAssignments };
+                              if (e.target.value) {
+                                newAssignments[i] = e.target.value;
+                              } else {
+                                delete newAssignments[i];
+                              }
+                              setGridCellAssignments(newAssignments);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full h-full text-center bg-transparent cursor-pointer hover:bg-primary/10 focus:outline-none focus:bg-primary/20 text-xs font-bold text-primary"
+                          >
+                            <option value="">Ячейка {i + 1}</option>
+                            {availableBooths.map(booth => (
+                              <option key={booth.id} value={booth.id}>
+                                {booth.number}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })}
                   </div>
                   
                   <div

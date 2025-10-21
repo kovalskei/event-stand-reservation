@@ -691,12 +691,12 @@ export default function Index() {
     }
   };
 
-  const exportToPDF = async () => {
+  const exportToImage = async () => {
     const mapElement = containerRef.current;
     if (!mapElement) return;
 
     toast({
-      title: 'Экспорт в PDF',
+      title: 'Сохранение изображения',
       description: 'Создание скриншота карты...',
     });
 
@@ -705,7 +705,7 @@ export default function Index() {
       mapElement.style.transform = 'none';
       
       const canvas = await html2canvas(mapElement, {
-        scale: 1,
+        scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true,
@@ -716,23 +716,25 @@ export default function Index() {
 
       mapElement.style.transform = originalTransform;
 
-      const pdf = new jsPDF('l', 'mm', 'a4');
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      
-      const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-      
-      pdf.save(`${selectedEvent.name}_карта_стендов.pdf`);
-      
-      toast({
-        title: 'PDF сохранен',
-        description: 'Карта стендов успешно экспортирована',
-      });
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${selectedEvent.name}_карта_стендов.png`;
+          link.click();
+          URL.revokeObjectURL(url);
+          
+          toast({
+            title: 'Изображение сохранено',
+            description: 'Карта стендов успешно скачана',
+          });
+        }
+      }, 'image/png');
     } catch (error) {
       toast({
         title: 'Ошибка',
-        description: 'Не удалось создать PDF',
+        description: 'Не удалось создать изображение',
         variant: 'destructive',
       });
     }
@@ -947,9 +949,9 @@ export default function Index() {
                       Сохранить карту
                     </Button>
                   )}
-                  <Button onClick={exportToPDF} variant="outline" size="sm">
-                    <Icon name="FileDown" size={16} className="mr-2" />
-                    Экспорт в PDF
+                  <Button onClick={exportToImage} variant="outline" size="sm">
+                    <Icon name="Download" size={16} className="mr-2" />
+                    Скачать изображение
                   </Button>
                   <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
                     <Icon name="Edit" size={16} className="mr-2" />

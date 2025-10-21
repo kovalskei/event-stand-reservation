@@ -701,8 +701,11 @@ export default function Index() {
     });
 
     try {
+      const originalTransform = mapElement.style.transform;
+      mapElement.style.transform = 'none';
+      
       const canvas = await html2canvas(mapElement, {
-        scale: 1.5,
+        scale: 1,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true,
@@ -710,6 +713,8 @@ export default function Index() {
         width: 2400,
         height: 1200,
       });
+
+      mapElement.style.transform = originalTransform;
 
       const pdf = new jsPDF('l', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();

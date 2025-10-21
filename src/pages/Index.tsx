@@ -270,7 +270,7 @@ export default function Index() {
       const centerY = position.y + position.height / 2;
 
       const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
-      const rotation = Math.round(angle / 15) * 15;
+      const rotation = Math.round(angle / 5) * 5;
 
       setPositions(prev => prev.map(p => 
         p.id === rotating ? { ...p, rotation } : p
@@ -925,7 +925,7 @@ export default function Index() {
                     <button
                       onMouseDown={(e) => handleMouseDown(e, booth.id)}
                       onClick={() => !editMode && setSelectedBooth(booth)}
-                      className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 ${editMode ? 'cursor-move hover:ring-4 hover:ring-primary/50' : 'cursor-pointer hover:scale-110 hover:shadow-2xl'} w-full h-full flex items-center justify-center border-2 ${editMode ? 'border-primary' : 'border-white/20'} ${isActive ? 'shadow-2xl ring-4 ring-primary' : ''}`}
+                      className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 ${editMode ? 'cursor-move hover:ring-2 hover:ring-primary/50' : 'cursor-pointer hover:scale-110 hover:shadow-2xl'} w-full h-full flex items-center justify-center ${editMode ? 'border border-primary' : 'border-2 border-white/20'} ${isActive ? 'shadow-2xl ring-2 ring-primary' : ''}`}
                     >
                       {booth.id}
                     </button>

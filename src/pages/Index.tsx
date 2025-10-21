@@ -701,10 +701,16 @@ export default function Index() {
     });
 
     try {
-      const originalTransform = mapElement.style.transform;
-      mapElement.style.transform = 'none';
+      const clone = mapElement.cloneNode(true) as HTMLElement;
+      clone.style.transform = 'none';
+      clone.style.position = 'absolute';
+      clone.style.left = '-9999px';
+      clone.style.top = '0';
+      clone.style.width = '2400px';
+      clone.style.height = '1200px';
+      document.body.appendChild(clone);
       
-      const canvas = await html2canvas(mapElement, {
+      const canvas = await html2canvas(clone, {
         scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
@@ -714,7 +720,7 @@ export default function Index() {
         height: 1200,
       });
 
-      mapElement.style.transform = originalTransform;
+      document.body.removeChild(clone);
 
       canvas.toBlob((blob) => {
         if (blob) {

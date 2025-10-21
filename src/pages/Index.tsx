@@ -173,29 +173,51 @@ export default function Index() {
   });
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (draggedBooth && containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const newX = e.clientX - rect.left - dragOffset.x;
+        const newY = e.clientY - rect.top - dragOffset.y;
+
+        setPositions(prev => prev.map(pos =>
+          pos.id === draggedBooth
+            ? { ...pos, x: Math.max(0, newX), y: Math.max(0, newY) }
+            : pos
+        ));
+      }
+
+      if (resizingBooth) {
+        const deltaX = e.clientX - resizeStart.x;
+        const deltaY = e.clientY - resizeStart.y;
+        const newWidth = Math.max(40, resizeStart.width + deltaX);
+        const newHeight = Math.max(40, resizeStart.height + deltaY);
+
+        setPositions(prev => prev.map(pos =>
+          pos.id === resizingBooth
+            ? { ...pos, width: newWidth, height: newHeight }
+            : pos
+        ));
+      }
+    };
+
+    const onMouseUp = () => {
       if (draggedBooth) {
-        handleMouseMove(e);
+        snapToNeighbors(draggedBooth);
+        setDraggedBooth(null);
       }
       if (resizingBooth) {
-        handleMouseMove(e);
+        setResizingBooth(null);
       }
     };
 
-    const handleMouseUp = () => {
-      if (draggedBooth || resizingBooth) {
-        handleMouseUp();
-      }
-    };
-
-    window.addEventListener('mousemove', handleMouseMove as any);
-    window.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
 
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove as any);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
     };
-  }, [draggedBooth, resizingBooth]);
+  }, [draggedBooth, resizingBooth, dragOffset, resizeStart, positions]);
 
   const handleBoothClick = (boothId: string) => {
     if (!editMode) {
@@ -265,42 +287,7 @@ export default function Index() {
     }
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
-    if (draggedBooth && containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const newX = e.clientX - rect.left - dragOffset.x;
-      const newY = e.clientY - rect.top - dragOffset.y;
 
-      setPositions(positions.map(pos =>
-        pos.id === draggedBooth
-          ? { ...pos, x: Math.max(0, newX), y: Math.max(0, newY) }
-          : pos
-      ));
-    }
-
-    if (resizingBooth) {
-      const deltaX = e.clientX - resizeStart.x;
-      const deltaY = e.clientY - resizeStart.y;
-      const newWidth = Math.max(40, resizeStart.width + deltaX);
-      const newHeight = Math.max(40, resizeStart.height + deltaY);
-
-      setPositions(positions.map(pos =>
-        pos.id === resizingBooth
-          ? { ...pos, width: newWidth, height: newHeight }
-          : pos
-      ));
-    }
-  };
-
-  const handleMouseUp = () => {
-    if (draggedBooth) {
-      snapToNeighbors(draggedBooth);
-      setDraggedBooth(null);
-    }
-    if (resizingBooth) {
-      setResizingBooth(null);
-    }
-  };
 
   const snapToNeighbors = (boothId: string) => {
     const SNAP_THRESHOLD = 15;

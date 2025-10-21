@@ -1,5 +1,5 @@
 """
-Business: Автоматическое определение позиций стендов на карте
+Business: Автоматическое определение позиций стендов на карте по текстовым меткам
 Args: event с httpMethod POST и base64 изображением карты
 Returns: HTTP response с массивом координат стендов
 """
@@ -7,7 +7,9 @@ import json
 import base64
 import cv2
 import numpy as np
-from typing import Dict, Any, List
+import pytesseract
+import re
+from typing import Dict, Any, List, Tuple
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
     method: str = event.get('httpMethod', 'GET')
@@ -69,14 +71,38 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         
+        _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        
+        ocr_data = pytesseract.image_to_data(thresh, output_type=pytesseract.Output.DICT, config='--psm 11')
+        
+        text_labels = []
+        pattern = re.compile(r'^[A-Z]+\d+$', re.IGNORECASE)
+        
+        for i in range(len(ocr_data['text'])):
+            text = ocr_data['text'][i].strip().upper()
+            conf = int(ocr_data['conf'][i])
+            
+            if conf > 30 and pattern.match(text):
+                x = ocr_data['left'][i]
+                y = ocr_data['top'][i]
+                w = ocr_data['width'][i]
+                h = ocr_data['height'][i]
+                
+                text_labels.append({
+                    'id': text,
+                    'x': x,
+                    'y': y,
+                    'width': w,
+                    'height': h,
+                    'center_x': x + w // 2,
+                    'center_y': y + h // 2
+                })
+        
         blurred = cv2.GaussianBlur(gray, (5, 5), 0)
-        
         edges = cv2.Canny(blurred, 50, 150)
-        
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        valid_booths = []
-        
+        rectangles = []
         for contour in contours:
             area = cv2.contourArea(contour)
             
@@ -89,45 +115,45 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             if aspect_ratio < 0.3 or aspect_ratio > 3:
                 continue
             
-            x_percent = (x / width) * 100
-            y_percent = (y / height) * 100
-            w_percent = (w / width) * 100
-            h_percent = (h / height) * 100
-            
-            valid_booths.append({
-                'x': round(x_percent, 2),
-                'y': round(y_percent, 2),
-                'width': round(w_percent, 2),
-                'height': round(h_percent, 2)
+            rectangles.append({
+                'x': x,
+                'y': y,
+                'width': w,
+                'height': h
             })
-        
-        valid_booths = sorted(valid_booths, key=lambda b: (b['y'], b['x']))
         
         booths = []
-        row_letter = ord('A')
-        row_num = 1
-        prev_y = None
-        y_threshold = 5
         
-        for booth in valid_booths:
-            if prev_y is None:
-                prev_y = booth['y']
-            elif abs(booth['y'] - prev_y) > y_threshold:
-                row_letter += 1
-                row_num = 1
-                prev_y = booth['y']
+        for label in text_labels:
+            best_match = None
+            min_distance = float('inf')
             
-            letter = chr(row_letter) if row_letter <= ord('Z') else f'{chr(ord("A") + (row_letter - ord("A")) // 26 - 1)}{chr(ord("A") + (row_letter - ord("A")) % 26)}'
+            for rect in rectangles:
+                cx = rect['x'] + rect['width'] // 2
+                cy = rect['y'] + rect['height'] // 2
+                
+                if (rect['x'] <= label['center_x'] <= rect['x'] + rect['width'] and
+                    rect['y'] <= label['center_y'] <= rect['y'] + rect['height']):
+                    
+                    distance = ((label['center_x'] - cx) ** 2 + (label['center_y'] - cy) ** 2) ** 0.5
+                    
+                    if distance < min_distance:
+                        min_distance = distance
+                        best_match = rect
             
-            booths.append({
-                'id': f'{letter}{row_num}',
-                'x': booth['x'],
-                'y': booth['y'],
-                'width': booth['width'],
-                'height': booth['height']
-            })
-            
-            row_num += 1
+            if best_match:
+                x_percent = (best_match['x'] / width) * 100
+                y_percent = (best_match['y'] / height) * 100
+                w_percent = (best_match['width'] / width) * 100
+                h_percent = (best_match['height'] / height) * 100
+                
+                booths.append({
+                    'id': label['id'],
+                    'x': round(x_percent, 2),
+                    'y': round(y_percent, 2),
+                    'width': round(w_percent, 2),
+                    'height': round(h_percent, 2)
+                })
         
         return {
             'statusCode': 200,

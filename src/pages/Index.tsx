@@ -900,6 +900,9 @@ export default function Index() {
                       min="1"
                     />
                   </div>
+                  <div className="text-xs text-gray-600 border-r pr-2">
+                    Стендов: {booths.length}
+                  </div>
                   <Button onClick={placeBoothsOnGrid} size="sm" className="bg-booth-available hover:bg-booth-available/80">
                     <Icon name="Grid3x3" size={16} className="mr-2" />
                     Разместить стенды
@@ -1159,10 +1162,12 @@ export default function Index() {
                                 }
                               }}
                               onClick={(e) => e.stopPropagation()}
-                              className="w-full h-full text-center bg-transparent cursor-pointer hover:bg-primary/10 focus:outline-none focus:bg-primary/20 font-semibold text-primary/70 px-1"
-                              style={{ fontSize: '0.65rem' }}
+                              className="w-full h-full text-center bg-white/50 cursor-pointer hover:bg-primary/10 focus:outline-none focus:bg-primary/20 font-semibold text-primary border border-primary/30 px-1"
+                              style={{ fontSize: '0.7rem' }}
                             >
-                              <option value="">#{i + 1}</option>
+                              <option value="" disabled>
+                                {availableBooths.length > 0 ? `Выбрать (${availableBooths.length})` : 'Нет стендов'}
+                              </option>
                               {availableBooths.map(booth => (
                                 <option key={booth.id} value={booth.id}>
                                   {booth.number}

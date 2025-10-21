@@ -99,7 +99,10 @@ export default function Index() {
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [sheetUrl, setSheetUrl] = useState('');
+  const [sheetUrl, setSheetUrl] = useState(() => {
+    const saved = localStorage.getItem(`sheet-url-${mockEvents[0].id}`);
+    return saved || '';
+  });
   const [showSheetDialog, setShowSheetDialog] = useState(false);
   const [showMapUploadDialog, setShowMapUploadDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -452,6 +455,7 @@ export default function Index() {
         }));
       }
       
+      localStorage.setItem(`sheet-url-${selectedEvent.id}`, sheetUrl);
       setShowSheetDialog(false);
       setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
       
@@ -926,11 +930,17 @@ export default function Index() {
                     {snapEnabled ? "Прилипание" : "Свободно"}
                   </Button>
                   <Button onClick={() => {
+                    if (gridMode) {
+                      const assignedCount = Object.keys(gridCellAssignments).length;
+                      if (assignedCount > 0) {
+                        placeBoothsOnGrid();
+                      }
+                    }
                     setGridCellAssignments({});
                     setGridMode(true);
                   }} variant="outline" size="sm">
                     <Icon name="Grid3x3" size={16} className="mr-2" />
-                    Новая сетка
+                    {gridMode ? 'Новая сетка' : 'Сетка'}
                   </Button>
                   <Button onClick={autoDetectBooths} variant="outline" size="sm" disabled={loading}>
                     <Icon name="Sparkles" size={16} className="mr-2" />

@@ -827,15 +827,7 @@ export default function Index() {
                 setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
               }
             }}
-            onMouseMove={(e) => {
-              if (isPanning && isSpacePressed) {
-                setPanOffset({
-                  x: e.clientX - panStart.x,
-                  y: e.clientY - panStart.y
-                });
-              }
-            }}
-            onMouseUp={() => setIsPanning(false)}
+
           >
             <div 
               ref={containerRef}

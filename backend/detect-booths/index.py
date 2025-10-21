@@ -75,8 +75,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        booths = []
-        booth_counter = 1
+        valid_booths = []
         
         for contour in contours:
             area = cv2.contourArea(contour)
@@ -95,17 +94,40 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             w_percent = (w / width) * 100
             h_percent = (h / height) * 100
             
-            booths.append({
-                'id': f'B{booth_counter}',
+            valid_booths.append({
                 'x': round(x_percent, 2),
                 'y': round(y_percent, 2),
                 'width': round(w_percent, 2),
                 'height': round(h_percent, 2)
             })
-            
-            booth_counter += 1
         
-        booths = sorted(booths, key=lambda b: (b['y'], b['x']))
+        valid_booths = sorted(valid_booths, key=lambda b: (b['y'], b['x']))
+        
+        booths = []
+        row_letter = ord('A')
+        row_num = 1
+        prev_y = None
+        y_threshold = 5
+        
+        for booth in valid_booths:
+            if prev_y is None:
+                prev_y = booth['y']
+            elif abs(booth['y'] - prev_y) > y_threshold:
+                row_letter += 1
+                row_num = 1
+                prev_y = booth['y']
+            
+            letter = chr(row_letter) if row_letter <= ord('Z') else f'{chr(ord("A") + (row_letter - ord("A")) // 26 - 1)}{chr(ord("A") + (row_letter - ord("A")) % 26)}'
+            
+            booths.append({
+                'id': f'{letter}{row_num}',
+                'x': booth['x'],
+                'y': booth['y'],
+                'width': booth['width'],
+                'height': booth['height']
+            })
+            
+            row_num += 1
         
         return {
             'statusCode': 200,

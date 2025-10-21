@@ -226,8 +226,11 @@ export default function Index() {
     const containerWidth = 2400;
     const containerHeight = 1200;
     
-    const mouseX = ((e.clientX - rect.left) / zoom / containerWidth) * 100;
-    const mouseY = ((e.clientY - rect.top) / zoom / containerHeight) * 100;
+    const mouseXInContainer = (e.clientX - rect.left) / zoom;
+    const mouseYInContainer = (e.clientY - rect.top) / zoom;
+    
+    const mouseX = (mouseXInContainer / containerWidth) * 100;
+    const mouseY = (mouseYInContainer / containerHeight) * 100;
     
     const offsetX = mouseX - position.x;
     const offsetY = mouseY - position.y;
@@ -447,27 +450,90 @@ export default function Index() {
   const autoDetectBooths = async () => {
     setLoading(true);
     toast({
-      title: 'Автоопределение стендов',
-      description: 'Анализируем карту...',
+      title: 'Распознавание стендов',
+      description: 'Анализируем изображение и распознаём текст...',
     });
 
     try {
-      const response = await fetch('https://functions.poehali.dev/c2e9e565-4a01-4b37-8c5b-7853ae94e5bd', {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = selectedEvent.mapUrl;
+      
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+      });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = 2400;
+      canvas.height = 1200;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas context not available');
+      
+      ctx.drawImage(img, 0, 0, 2400, 1200);
+      const imageData = canvas.toDataURL('image/png');
+
+      const prompt = `Проанализируй эту карту выставочного павильона и найди все номера стендов (например: A1, A2, B1, B2, C1 и т.д.).
+
+Для каждого найденного номера стенда определи:
+1. ID стенда (текст который написан на изображении)
+2. Координаты центра стенда в процентах от размера изображения (x, y от 0 до 100)
+3. Примерные размеры стенда в процентах (width, height)
+
+Верни JSON в формате:
+{
+  "booths": [
+    {"id": "A1", "x": 10, "y": 20, "width": 5, "height": 8},
+    {"id": "A2", "x": 16, "y": 20, "width": 5, "height": 8}
+  ]
+}
+
+ВАЖНО: 
+- x,y - это координаты ЛЕВОГО ВЕРХНЕГО угла стенда
+- Размеры должны быть пропорциональны видимым квадратам на карте
+- Если стенды выглядят одинаковыми - используй одинаковые размеры`;
+
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'x-api-key': 'sk-ant-api03-xmkYVPtDcPa_IkQWoMvHGAkBBe-OqH0wMaJHmwBL3C81G0C3kUfXzv8MJKh8yI1yHv_W0sSXhMx8R8yjXQ-eiwRtAAA',
+          'anthropic-version': '2023-06-01'
         },
         body: JSON.stringify({
-          image: selectedEvent.mapUrl,
-        }),
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 4096,
+          messages: [{
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'image/png',
+                  data: imageData.split(',')[1]
+                }
+              },
+              {
+                type: 'text',
+                text: prompt
+              }
+            ]
+          }]
+        })
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка определения стендов');
+        throw new Error('Ошибка при обращении к Claude API');
       }
 
-      const data = await response.json();
+      const result = await response.json();
+      const content = result.content[0].text;
+      
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) throw new Error('Не удалось распознать формат ответа');
+      
+      const data = JSON.parse(jsonMatch[0]);
       
       const detectedPositions = data.booths.map((booth: any) => {
         const existing = positions.find(p => p.id === booth.id);
@@ -482,15 +548,23 @@ export default function Index() {
       });
 
       setPositions(detectedPositions);
+      
+      const newBooths = data.booths.map((b: any) => ({
+        id: b.id,
+        status: booths.find(booth => booth.id === b.id)?.status || 'available' as BoothStatus,
+        company: booths.find(booth => booth.id === b.id)?.company || null,
+        contact: booths.find(booth => booth.id === b.id)?.contact || null,
+      }));
+      setBooths(newBooths);
 
       toast({
-        title: 'Стенды определены',
-        description: `Найдено ${data.count} стендов. Проверьте и скорректируйте позиции.`,
+        title: 'Стенды распознаны!',
+        description: `Найдено ${data.booths.length} стендов по номерам на карте.`,
       });
     } catch (error) {
       toast({
         title: 'Ошибка',
-        description: error instanceof Error ? error.message : 'Не удалось определить стенды',
+        description: error instanceof Error ? error.message : 'Не удалось распознать стенды',
         variant: 'destructive',
       });
     } finally {

@@ -113,23 +113,28 @@ def fetch_sheet_data(sheet_id: str) -> Dict[str, Any]:
             continue
         
         parts = line.split(',')
-        if len(parts) < 2:
+        if len(parts) < 1:
             continue
         
-        booth_id = parts[0].strip().strip('"')
+        booth_number = parts[0].strip().strip('"')
         
-        if booth_id.lower() == 'mapurl' or booth_id.lower() == 'map_url':
+        if booth_number.lower() == 'mapurl' or booth_number.lower() == 'map_url':
             if len(parts) > 1:
                 map_url = parts[1].strip().strip('"')
             continue
         
-        status = parts[1].strip().strip('"').lower()
+        if not booth_number:
+            continue
         
-        if status not in ['available', 'booked', 'unavailable']:
-            status = 'available'
+        status = 'available'
+        if len(parts) > 1:
+            status = parts[1].strip().strip('"').lower()
+            if status not in ['available', 'booked', 'unavailable']:
+                status = 'available'
         
         booth = {
-            'id': booth_id,
+            'id': booth_number,
+            'number': booth_number,
             'status': status,
         }
         

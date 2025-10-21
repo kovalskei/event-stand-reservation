@@ -2,6 +2,7 @@ export type BoothStatus = 'available' | 'booked' | 'unavailable';
 
 export interface Booth {
   id: string;
+  number: string;
   status: BoothStatus;
   company?: string;
   contact?: string;
@@ -46,21 +47,21 @@ export const mockEvents: Event[] = [
 ];
 
 export const initialBooths: Booth[] = [
-  { id: 'A1', status: 'available' },
-  { id: 'A2', status: 'booked', company: 'ТехноПром', contact: 'Иванов И.И.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A3', status: 'available' },
-  { id: 'A4', status: 'available' },
-  { id: 'A5', status: 'booked', company: 'ИнноВейт', contact: 'Петрова А.С.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A6', status: 'available' },
-  { id: 'A7', status: 'available' },
-  { id: 'A8', status: 'available' },
-  { id: 'A9', status: 'available' },
-  { id: 'A10', status: 'booked', company: 'МегаСтрой', contact: 'Сидоров П.П.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A11', status: 'available' },
-  { id: 'A12', status: 'available' },
-  { id: 'B1', status: 'available' },
-  { id: 'B2', status: 'available' },
-  { id: 'B3', status: 'booked', company: 'ЭкоЛайн', contact: 'Морозова Е.В.', price: '75 000 ₽', size: '4x4 м' },
+  { id: 'A1', number: 'A1', status: 'available' },
+  { id: 'A2', number: 'A2', status: 'booked', company: 'ТехноПром', contact: 'Иванов И.И.', price: '50 000 ₽', size: '3x3 м' },
+  { id: 'A3', number: 'A3', status: 'available' },
+  { id: 'A4', number: 'A4', status: 'available' },
+  { id: 'A5', number: 'A5', status: 'booked', company: 'ИнноВейт', contact: 'Петрова А.С.', price: '50 000 ₽', size: '3x3 м' },
+  { id: 'A6', number: 'A6', status: 'available' },
+  { id: 'A7', number: 'A7', status: 'available' },
+  { id: 'A8', number: 'A8', status: 'available' },
+  { id: 'A9', number: 'A9', status: 'available' },
+  { id: 'A10', number: 'A10', status: 'booked', company: 'МегаСтрой', contact: 'Сидоров П.П.', price: '50 000 ₽', size: '3x3 м' },
+  { id: 'A11', number: 'A11', status: 'available' },
+  { id: 'A12', number: 'A12', status: 'available' },
+  { id: 'B1', number: 'B1', status: 'available' },
+  { id: 'B2', number: 'B2', status: 'available' },
+  { id: 'B3', number: 'B3', status: 'booked', company: 'ЭкоЛайн', contact: 'Морозова Е.В.', price: '75 000 ₽', size: '4x4 м' },
 ];
 
 export const defaultPositions: BoothPosition[] = [

@@ -697,77 +697,26 @@ export default function Index() {
 
     toast({
       title: 'Экспорт в PDF',
-      description: 'Подготовка документа...',
+      description: 'Создание скриншота карты...',
     });
 
     try {
       const canvas = await html2canvas(mapElement, {
-        scale: 2,
+        scale: 1.5,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true,
         allowTaint: true,
+        width: 2400,
+        height: 1200,
       });
 
-      const imgWidth = 190;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const headerCanvas = document.createElement('canvas');
-      headerCanvas.width = 800;
-      headerCanvas.height = 100;
-      const ctx = headerCanvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, 800, 100);
-        ctx.fillStyle = '#000000';
-        ctx.font = 'bold 32px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(selectedEvent.name, 400, 40);
-        ctx.font = '18px Arial';
-        ctx.fillText(`${selectedEvent.date} • ${selectedEvent.location}`, 400, 70);
-      }
-      const headerData = headerCanvas.toDataURL('image/png');
-      pdf.addImage(headerData, 'PNG', 10, 10, 190, 23.75);
+      const pdf = new jsPDF('l', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
       
       const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 10, 40, imgWidth, imgHeight);
-      
-      let yPosition = 40 + imgHeight + 10;
-      
-      const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
-      
-      if (bookedBooths.length > 0) {
-        const listCanvas = document.createElement('canvas');
-        listCanvas.width = 800;
-        const lineHeight = 30;
-        listCanvas.height = (bookedBooths.length + 1) * lineHeight + 20;
-        const listCtx = listCanvas.getContext('2d');
-        
-        if (listCtx) {
-          listCtx.fillStyle = '#ffffff';
-          listCtx.fillRect(0, 0, listCanvas.width, listCanvas.height);
-          listCtx.fillStyle = '#000000';
-          listCtx.font = 'bold 24px Arial';
-          listCtx.fillText('Забронированные стенды:', 10, 30);
-          
-          listCtx.font = '20px Arial';
-          bookedBooths.forEach((booth, index) => {
-            listCtx.fillText(`${booth.id} - ${booth.company}`, 10, 60 + index * lineHeight);
-          });
-        }
-        
-        const listData = listCanvas.toDataURL('image/png');
-        const listHeight = (listCanvas.height * 190) / listCanvas.width;
-        
-        if (yPosition + listHeight > 280) {
-          pdf.addPage();
-          yPosition = 15;
-        }
-        
-        pdf.addImage(listData, 'PNG', 10, yPosition, 190, listHeight);
-      }
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       
       pdf.save(`${selectedEvent.name}_карта_стендов.pdf`);
       

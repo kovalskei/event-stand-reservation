@@ -65,7 +65,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'isBase64Encoded': False
             }
         
-        booths = fetch_sheet_data(sheet_id)
+        result = fetch_sheet_data(sheet_id)
         
         return {
             'statusCode': 200,
@@ -73,7 +73,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'Content-Type': 'application/json',
                 'Access-Control-Allow-Origin': '*'
             },
-            'body': json.dumps({'booths': booths}),
+            'body': json.dumps(result),
             'isBase64Encoded': False
         }
     
@@ -95,7 +95,7 @@ def extract_sheet_id(url: str) -> str:
     return match.group(1) if match else ''
 
 
-def fetch_sheet_data(sheet_id: str) -> List[Dict[str, Any]]:
+def fetch_sheet_data(sheet_id: str) -> Dict[str, Any]:
     import requests
     
     csv_url = f'https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv'
@@ -105,9 +105,11 @@ def fetch_sheet_data(sheet_id: str) -> List[Dict[str, Any]]:
     
     lines = response.text.strip().split('\n')
     booths = []
+    map_url = None
     
     for i, line in enumerate(lines):
         if i == 0:
+            header = line.lower()
             continue
         
         parts = line.split(',')
@@ -115,6 +117,12 @@ def fetch_sheet_data(sheet_id: str) -> List[Dict[str, Any]]:
             continue
         
         booth_id = parts[0].strip().strip('"')
+        
+        if booth_id.lower() == 'mapurl' or booth_id.lower() == 'map_url':
+            if len(parts) > 1:
+                map_url = parts[1].strip().strip('"')
+            continue
+        
         status = parts[1].strip().strip('"').lower()
         
         if status not in ['available', 'booked', 'unavailable']:
@@ -139,4 +147,7 @@ def fetch_sheet_data(sheet_id: str) -> List[Dict[str, Any]]:
         
         booths.append(booth)
     
-    return booths
+    return {
+        'booths': booths,
+        'mapUrl': map_url
+    }

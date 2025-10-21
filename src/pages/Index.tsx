@@ -312,13 +312,21 @@ export default function Index() {
 
       const data = await response.json();
       setBooths(data.booths);
+      
+      if (data.mapUrl) {
+        setSelectedEvent(prev => ({
+          ...prev,
+          mapUrl: data.mapUrl
+        }));
+      }
+      
       setShowSheetDialog(false);
       setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
       
       if (!silent) {
         toast({
           title: 'Данные загружены',
-          description: `Синхронизировано ${data.booths.length} стендов`,
+          description: `Синхронизировано ${data.booths.length} стендов${data.mapUrl ? ' и карта обновлена' : ''}`,
         });
       }
     } catch (error) {
@@ -385,6 +393,8 @@ export default function Index() {
         scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
+        useCORS: true,
+        allowTaint: true,
       });
 
       const imgWidth = 190;
@@ -392,38 +402,59 @@ export default function Index() {
       
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      pdf.setFontSize(18);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(selectedEvent.name, 105, 15, { align: 'center' });
-      
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`${selectedEvent.date} • ${selectedEvent.location}`, 105, 22, { align: 'center' });
+      const headerCanvas = document.createElement('canvas');
+      headerCanvas.width = 800;
+      headerCanvas.height = 100;
+      const ctx = headerCanvas.getContext('2d');
+      if (ctx) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 800, 100);
+        ctx.fillStyle = '#000000';
+        ctx.font = 'bold 32px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(selectedEvent.name, 400, 40);
+        ctx.font = '18px Arial';
+        ctx.fillText(`${selectedEvent.date} • ${selectedEvent.location}`, 400, 70);
+      }
+      const headerData = headerCanvas.toDataURL('image/png');
+      pdf.addImage(headerData, 'PNG', 10, 10, 190, 23.75);
       
       const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 10, 30, imgWidth, imgHeight);
+      pdf.addImage(imgData, 'PNG', 10, 40, imgWidth, imgHeight);
       
-      let yPosition = 30 + imgHeight + 10;
+      let yPosition = 40 + imgHeight + 10;
       
       const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
       
       if (bookedBooths.length > 0) {
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Забронированные стенды:', 10, yPosition);
-        yPosition += 7;
+        const listCanvas = document.createElement('canvas');
+        listCanvas.width = 800;
+        const lineHeight = 30;
+        listCanvas.height = (bookedBooths.length + 1) * lineHeight + 20;
+        const listCtx = listCanvas.getContext('2d');
         
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
+        if (listCtx) {
+          listCtx.fillStyle = '#ffffff';
+          listCtx.fillRect(0, 0, listCanvas.width, listCanvas.height);
+          listCtx.fillStyle = '#000000';
+          listCtx.font = 'bold 24px Arial';
+          listCtx.fillText('Забронированные стенды:', 10, 30);
+          
+          listCtx.font = '20px Arial';
+          bookedBooths.forEach((booth, index) => {
+            listCtx.fillText(`${booth.id} - ${booth.company}`, 10, 60 + index * lineHeight);
+          });
+        }
         
-        bookedBooths.forEach(booth => {
-          if (yPosition > 280) {
-            pdf.addPage();
-            yPosition = 15;
-          }
-          pdf.text(`${booth.id} - ${booth.company}`, 10, yPosition);
-          yPosition += 6;
-        });
+        const listData = listCanvas.toDataURL('image/png');
+        const listHeight = (listCanvas.height * 190) / listCanvas.width;
+        
+        if (yPosition + listHeight > 280) {
+          pdf.addPage();
+          yPosition = 15;
+        }
+        
+        pdf.addImage(listData, 'PNG', 10, yPosition, 190, listHeight);
       }
       
       pdf.save(`${selectedEvent.name}_карта_стендов.pdf`);

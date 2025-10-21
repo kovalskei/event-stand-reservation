@@ -219,15 +219,18 @@ export default function Index() {
     const container = containerRef.current;
     if (!container) return;
     
-    const rect = container.getBoundingClientRect();
     const position = positions.find(p => p.id === boothId);
     if (!position) return;
     
-    const mouseXInContainer = (e.clientX - rect.left - panOffset.x) / zoom;
-    const mouseYInContainer = (e.clientY - rect.top - panOffset.y) / zoom;
+    const rect = container.getBoundingClientRect();
+    const containerWidth = 2400;
+    const containerHeight = 1200;
     
-    const offsetX = mouseXInContainer / (rect.width / zoom) * 100 - position.x;
-    const offsetY = mouseYInContainer / (rect.height / zoom) * 100 - position.y;
+    const mouseXInContainer = (e.clientX - rect.left) / zoom;
+    const mouseYInContainer = (e.clientY - rect.top) / zoom;
+    
+    const offsetX = (mouseXInContainer / containerWidth) * 100 - position.x;
+    const offsetY = (mouseYInContainer / containerHeight) * 100 - position.y;
     
     setDragging(boothId);
     setDragOffset({ x: offsetX, y: offsetY });
@@ -248,12 +251,14 @@ export default function Index() {
     if (!container) return;
     
     const rect = container.getBoundingClientRect();
+    const containerWidth = 2400;
+    const containerHeight = 1200;
     
-    const mouseXInContainer = (e.clientX - rect.left - panOffset.x) / zoom;
-    const mouseYInContainer = (e.clientY - rect.top - panOffset.y) / zoom;
+    const mouseXInContainer = (e.clientX - rect.left) / zoom;
+    const mouseYInContainer = (e.clientY - rect.top) / zoom;
     
-    const mouseX = mouseXInContainer / (rect.width / zoom) * 100;
-    const mouseY = mouseYInContainer / (rect.height / zoom) * 100;
+    const mouseX = (mouseXInContainer / containerWidth) * 100;
+    const mouseY = (mouseYInContainer / containerHeight) * 100;
 
     if (dragging) {
       const position = positions.find(p => p.id === dragging);

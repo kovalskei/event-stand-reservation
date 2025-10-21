@@ -111,6 +111,8 @@ export default function Index() {
   });
   const [dragging, setDragging] = useState<string | null>(null);
   const [resizing, setResizing] = useState<{ id: string; corner: 'se' | 'sw' | 'ne' | 'nw' } | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const [mapChanged, setMapChanged] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -123,6 +125,14 @@ export default function Index() {
       setPositions(JSON.parse(saved));
     } else {
       setPositions(defaultPositions);
+    }
+
+    const savedMapUrl = localStorage.getItem(`map-url-${selectedEvent.id}`);
+    if (savedMapUrl) {
+      setSelectedEvent(prev => ({
+        ...prev,
+        mapUrl: savedMapUrl
+      }));
     }
   }, [selectedEvent.id]);
 
@@ -372,6 +382,15 @@ export default function Index() {
     setEditMode(false);
   };
 
+  const saveMapUrl = () => {
+    localStorage.setItem(`map-url-${selectedEvent.id}`, selectedEvent.mapUrl);
+    setMapChanged(false);
+    toast({
+      title: 'Карта сохранена',
+      description: 'URL карты сохранён в localStorage',
+    });
+  };
+
   const resetPositions = () => {
     setPositions(defaultPositions);
     localStorage.removeItem(`booth-positions-${selectedEvent.id}`);
@@ -411,11 +430,12 @@ export default function Index() {
           mapUrl: dataUrl
         }));
 
+        setMapChanged(true);
         setShowMapUploadDialog(false);
 
         toast({
           title: 'Изображение загружено',
-          description: 'Карта успешно обновлена. При следующей публикации файл будет сохранён в репозиторий.',
+          description: 'Нажмите "Сохранить карту" чтобы применить изменения',
         });
         
         setLoading(false);
@@ -658,11 +678,38 @@ export default function Index() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
+                  <div className="flex items-center gap-2 mr-2">
+                    <Button 
+                      onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} 
+                      variant="outline" 
+                      size="sm"
+                      className="px-2"
+                    >
+                      <Icon name="ZoomOut" size={16} />
+                    </Button>
+                    <span className="text-sm text-gray-600 font-medium min-w-[50px] text-center">
+                      {Math.round(zoom * 100)}%
+                    </span>
+                    <Button 
+                      onClick={() => setZoom(Math.min(2, zoom + 0.1))} 
+                      variant="outline" 
+                      size="sm"
+                      className="px-2"
+                    >
+                      <Icon name="ZoomIn" size={16} />
+                    </Button>
+                  </div>
                   <Button onClick={() => setShowMapUploadDialog(true)} variant="outline" size="sm">
                     <Icon name="Upload" size={16} className="mr-2" />
                     Загрузить карту
                   </Button>
+                  {mapChanged && (
+                    <Button onClick={saveMapUrl} size="sm" className="bg-booth-available hover:bg-booth-available/80">
+                      <Icon name="Save" size={16} className="mr-2" />
+                      Сохранить карту
+                    </Button>
+                  )}
                   <Button onClick={exportToPDF} variant="outline" size="sm">
                     <Icon name="FileDown" size={16} className="mr-2" />
                     Экспорт в PDF
@@ -695,8 +742,12 @@ export default function Index() {
           <div className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-auto">
             <div 
               ref={containerRef}
-              className="relative min-w-[1200px] w-full select-none" 
-              style={{ aspectRatio: '1920/850' }}
+              className="relative min-w-[1200px] w-full select-none origin-top-left" 
+              style={{ 
+                aspectRatio: '1920/850',
+                transform: `scale(${zoom})`,
+                transformOrigin: 'top left'
+              }}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
             >

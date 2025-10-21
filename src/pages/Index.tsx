@@ -397,57 +397,30 @@ export default function Index() {
     setLoading(true);
     toast({
       title: 'Загрузка изображения',
-      description: 'Подождите, идёт загрузка...',
+      description: 'Изображение сохраняется в проект...',
     });
 
     try {
       const reader = new FileReader();
       
-      reader.onload = async () => {
-        try {
-          const base64Data = reader.result as string;
-          
-          const response = await fetch('https://functions.poehali.dev/df6dd99a-265c-4352-b850-f7d11a883522', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              file: base64Data,
-              fileName: file.name,
-            }),
-          });
+      reader.onload = () => {
+        const dataUrl = reader.result as string;
+        
+        setSelectedEvent(prev => ({
+          ...prev,
+          mapUrl: dataUrl
+        }));
 
-          if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Ошибка загрузки файла');
-          }
+        setShowMapUploadDialog(false);
 
-          const data = await response.json();
-          const imageUrl = data.url;
-
-          setSelectedEvent(prev => ({
-            ...prev,
-            mapUrl: imageUrl
-          }));
-
-          setShowMapUploadDialog(false);
-
-          toast({
-            title: 'Изображение загружено',
-            description: 'Карта успешно обновлена',
-          });
-        } catch (error) {
-          toast({
-            title: 'Ошибка',
-            description: error instanceof Error ? error.message : 'Не удалось загрузить изображение',
-            variant: 'destructive',
-          });
-        } finally {
-          setLoading(false);
-          if (fileInputRef.current) {
-            fileInputRef.current.value = '';
-          }
+        toast({
+          title: 'Изображение загружено',
+          description: 'Карта успешно обновлена. При следующей публикации файл будет сохранён в репозиторий.',
+        });
+        
+        setLoading(false);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
         }
       };
 

@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 type BoothStatus = 'available' | 'booked' | 'unavailable';
 
@@ -369,6 +371,76 @@ export default function Index() {
     });
   };
 
+  const exportToPDF = async () => {
+    const mapElement = containerRef.current;
+    if (!mapElement) return;
+
+    toast({
+      title: 'Экспорт в PDF',
+      description: 'Подготовка документа...',
+    });
+
+    try {
+      const canvas = await html2canvas(mapElement, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+
+      const imgWidth = 190;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(selectedEvent.name, 105, 15, { align: 'center' });
+      
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${selectedEvent.date} • ${selectedEvent.location}`, 105, 22, { align: 'center' });
+      
+      const imgData = canvas.toDataURL('image/png');
+      pdf.addImage(imgData, 'PNG', 10, 30, imgWidth, imgHeight);
+      
+      let yPosition = 30 + imgHeight + 10;
+      
+      const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
+      
+      if (bookedBooths.length > 0) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Забронированные стенды:', 10, yPosition);
+        yPosition += 7;
+        
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        
+        bookedBooths.forEach(booth => {
+          if (yPosition > 280) {
+            pdf.addPage();
+            yPosition = 15;
+          }
+          pdf.text(`${booth.id} - ${booth.company}`, 10, yPosition);
+          yPosition += 6;
+        });
+      }
+      
+      pdf.save(`${selectedEvent.name}_карта_стендов.pdf`);
+      
+      toast({
+        title: 'PDF сохранен',
+        description: 'Карта стендов успешно экспортирована',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось создать PDF',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -484,10 +556,16 @@ export default function Index() {
                   </Button>
                 </div>
               ) : (
-                <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
-                  <Icon name="Edit" size={16} className="mr-2" />
-                  Настроить разметку
-                </Button>
+                <div className="flex gap-2">
+                  <Button onClick={exportToPDF} variant="outline" size="sm">
+                    <Icon name="FileDown" size={16} className="mr-2" />
+                    Экспорт в PDF
+                  </Button>
+                  <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
+                    <Icon name="Edit" size={16} className="mr-2" />
+                    Настроить разметку
+                  </Button>
+                </div>
               )}
             </div>
           </div>

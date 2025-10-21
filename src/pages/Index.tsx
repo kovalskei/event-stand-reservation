@@ -342,12 +342,13 @@ export default function Index() {
         description: 'Подождите, создаем отчет...',
       });
 
-      // Capture the map container
       const canvas = await html2canvas(containerRef.current, {
-        allowTaint: true,
-        useCORS: true,
         scale: 2,
         backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: false,
+        allowTaint: false,
+        imageTimeout: 0,
       });
 
       // Create PDF in landscape mode

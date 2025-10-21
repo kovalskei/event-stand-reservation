@@ -122,6 +122,13 @@ export default function Index() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  
+  const [gridMode, setGridMode] = useState(false);
+  const [grid, setGrid] = useState({ x: 10, y: 10, width: 80, height: 60, rotation: 0, rows: 3, cols: 3 });
+  const [editingGrid, setEditingGrid] = useState(false);
+  const [draggingGrid, setDraggingGrid] = useState(false);
+  const [resizingGrid, setResizingGrid] = useState<'se' | 'sw' | 'ne' | 'nw' | null>(null);
+  const [rotatingGrid, setRotatingGrid] = useState(false);
 
   const SNAP_THRESHOLD = 1.5;
 
@@ -334,14 +341,49 @@ export default function Index() {
     setDragging(null);
     setResizing(null);
     setRotating(null);
+    setDraggingGrid(false);
+    setResizingGrid(null);
+    setRotatingGrid(false);
   };
 
   useEffect(() => {
-    if (dragging || rotating) {
+    if (dragging || rotating || draggingGrid || resizingGrid || rotatingGrid) {
       window.addEventListener('mouseup', handleMouseUp as any);
       return () => window.removeEventListener('mouseup', handleMouseUp as any);
     }
-  }, [dragging, rotating]);
+  }, [dragging, rotating, draggingGrid, resizingGrid, rotatingGrid]);
+
+  const handleGridMouseMove = (e: React.MouseEvent) => {
+    if (!gridMode) return;
+    
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const containerWidth = 2400;
+    const containerHeight = 1200;
+    
+    const mouseXInContainer = (e.clientX - rect.left) / zoom;
+    const mouseYInContainer = (e.clientY - rect.top) / zoom;
+    
+    const mouseX = (mouseXInContainer / containerWidth) * 100;
+    const mouseY = (mouseYInContainer / containerHeight) * 100;
+
+    if (draggingGrid) {
+      const newX = Math.max(0, Math.min(100 - grid.width, mouseX - dragOffset.x));
+      const newY = Math.max(0, Math.min(100 - grid.height, mouseY - dragOffset.y));
+      setGrid({ ...grid, x: newX, y: newY });
+    } else if (resizingGrid === 'se') {
+      const newWidth = Math.max(10, mouseX - grid.x);
+      const newHeight = Math.max(10, mouseY - grid.y);
+      setGrid({ ...grid, width: Math.min(100 - grid.x, newWidth), height: Math.min(100 - grid.y, newHeight) });
+    } else if (rotatingGrid) {
+      const centerX = grid.x + grid.width / 2;
+      const centerY = grid.y + grid.height / 2;
+      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
+      setGrid({ ...grid, rotation: Math.round(angle / 15) * 15 });
+    }
+  };
 
   const loadSheetData = async (silent = false) => {
     if (!sheetUrl.trim()) {
@@ -493,6 +535,40 @@ export default function Index() {
     toast({
       title: 'Позиции сброшены',
       description: 'Разметка возвращена к настройкам по умолчанию',
+    });
+  };
+
+  const placeBoothsOnGrid = () => {
+    const cellWidth = grid.width / grid.cols;
+    const cellHeight = grid.height / grid.rows;
+    const newPositions: BoothPosition[] = [];
+    
+    let boothIndex = 0;
+    for (let row = 0; row < grid.rows; row++) {
+      for (let col = 0; col < grid.cols; col++) {
+        if (boothIndex >= booths.length) break;
+        
+        const cellX = grid.x + (col * cellWidth);
+        const cellY = grid.y + (row * cellHeight);
+        
+        newPositions.push({
+          id: booths[boothIndex].id,
+          x: cellX,
+          y: cellY,
+          width: cellWidth * 0.9,
+          height: cellHeight * 0.9,
+          rotation: grid.rotation
+        });
+        
+        boothIndex++;
+      }
+    }
+    
+    setPositions(newPositions);
+    setGridMode(false);
+    toast({
+      title: 'Стенды размещены',
+      description: `Размещено ${newPositions.length} стендов по сетке`,
     });
   };
 
@@ -759,8 +835,40 @@ export default function Index() {
                   </div>
                 </>
               )}
-              {editMode ? (
+              {gridMode ? (
                 <div className="flex gap-2">
+                  <div className="flex gap-2 items-center border-r pr-2">
+                    <label className="text-sm">Ряды:</label>
+                    <input 
+                      type="number" 
+                      value={grid.rows} 
+                      onChange={(e) => setGrid({...grid, rows: Math.max(1, parseInt(e.target.value) || 1)})}
+                      className="w-16 px-2 py-1 border rounded text-sm"
+                      min="1"
+                    />
+                    <label className="text-sm">Колонки:</label>
+                    <input 
+                      type="number" 
+                      value={grid.cols} 
+                      onChange={(e) => setGrid({...grid, cols: Math.max(1, parseInt(e.target.value) || 1)})}
+                      className="w-16 px-2 py-1 border rounded text-sm"
+                      min="1"
+                    />
+                  </div>
+                  <Button onClick={placeBoothsOnGrid} size="sm" className="bg-booth-available hover:bg-booth-available/80">
+                    <Icon name="Grid3x3" size={16} className="mr-2" />
+                    Разместить стенды
+                  </Button>
+                  <Button onClick={() => setGridMode(false)} variant="outline" size="sm">
+                    Отменить
+                  </Button>
+                </div>
+              ) : editMode ? (
+                <div className="flex gap-2">
+                  <Button onClick={() => setGridMode(true)} variant="outline" size="sm">
+                    <Icon name="Grid3x3" size={16} className="mr-2" />
+                    Сетка
+                  </Button>
                   <Button onClick={autoDetectBooths} variant="outline" size="sm" disabled={loading}>
                     <Icon name="Sparkles" size={16} className="mr-2" />
                     Автоопределение
@@ -831,7 +939,25 @@ export default function Index() {
             </div>
           </div>
 
-          {editMode && (
+          {gridMode && (
+            <div className="mb-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
+              <div className="flex items-start gap-3">
+                <Icon name="Grid3x3" size={20} className="text-primary mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Режим сетки</p>
+                  <p className="text-xs text-gray-600 mt-1">
+                    • Перетаскивайте сетку для позиционирования<br/>
+                    • Тяните за правый нижний угол для изменения размера<br/>
+                    • Используйте зелёный круг сверху для вращения (шаг 15°)<br/>
+                    • Настройте количество рядов и колонок<br/>
+                    • Нажмите "Разместить стенды" для автоматического размещения
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {editMode && !gridMode && (
             <div className="mb-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
               <div className="flex items-start gap-3">
                 <Icon name="Info" size={20} className="text-primary mt-0.5" />
@@ -875,7 +1001,9 @@ export default function Index() {
                     y: e.clientY - dragOffset.y
                   });
                 }
-                if (editMode) {
+                if (gridMode) {
+                  handleGridMouseMove(e);
+                } else if (editMode) {
                   handleMouseMove(e);
                 }
               }}
@@ -908,7 +1036,70 @@ export default function Index() {
                 className="w-full h-full object-contain pointer-events-none"
               />
 
-              {booths.map((booth) => {
+              {gridMode && (
+                <div
+                  className="absolute border-4 border-primary bg-primary/10 cursor-move"
+                  style={{
+                    left: `${grid.x}%`,
+                    top: `${grid.y}%`,
+                    width: `${grid.width}%`,
+                    height: `${grid.height}%`,
+                    transform: `rotate(${grid.rotation}deg)`,
+                    transformOrigin: 'center',
+                  }}
+                  onMouseDown={(e) => {
+                    const container = containerRef.current;
+                    if (!container) return;
+                    
+                    const rect = container.getBoundingClientRect();
+                    const containerWidth = 2400;
+                    const containerHeight = 1200;
+                    
+                    const mouseXInContainer = (e.clientX - rect.left) / zoom;
+                    const mouseYInContainer = (e.clientY - rect.top) / zoom;
+                    
+                    const mouseX = (mouseXInContainer / containerWidth) * 100;
+                    const mouseY = (mouseYInContainer / containerHeight) * 100;
+                    
+                    setDragOffset({ x: mouseX - grid.x, y: mouseY - grid.y });
+                    setDraggingGrid(true);
+                  }}
+                >
+                  <div className="absolute inset-0 grid pointer-events-none" style={{
+                    gridTemplateRows: `repeat(${grid.rows}, 1fr)`,
+                    gridTemplateColumns: `repeat(${grid.cols}, 1fr)`,
+                    gap: '4px',
+                    padding: '4px'
+                  }}>
+                    {Array.from({ length: grid.rows * grid.cols }).map((_, i) => (
+                      <div key={i} className="border-2 border-primary/30 bg-white/20 rounded flex items-center justify-center text-xs text-primary font-bold">
+                        {i + 1}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setResizingGrid('se');
+                    }}
+                    className="absolute bottom-0 right-0 w-4 h-4 bg-primary rounded-full cursor-se-resize border-2 border-white shadow-lg hover:scale-125 transition-transform z-10"
+                    style={{ transform: 'translate(50%, 50%)' }}
+                  />
+                  <div
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setRotatingGrid(true);
+                    }}
+                    className="absolute top-0 left-1/2 w-5 h-5 bg-green-500 rounded-full cursor-grab border-2 border-white shadow-lg hover:scale-125 transition-transform flex items-center justify-center z-10"
+                    style={{ transform: 'translate(-50%, -150%)' }}
+                  >
+                    <Icon name="RotateCw" size={12} className="text-white" />
+                  </div>
+                </div>
+              )}
+
+              {!gridMode && booths.map((booth) => {
                 const position = positions.find(p => p.id === booth.id);
                 if (!position) return null;
                 

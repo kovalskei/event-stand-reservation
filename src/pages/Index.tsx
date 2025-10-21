@@ -129,6 +129,7 @@ export default function Index() {
   const [draggingGrid, setDraggingGrid] = useState(false);
   const [resizingGrid, setResizingGrid] = useState<'se' | 'sw' | 'ne' | 'nw' | null>(null);
   const [rotatingGrid, setRotatingGrid] = useState(false);
+  const [snapEnabled, setSnapEnabled] = useState(true);
 
   const SNAP_THRESHOLD = 1.5;
 
@@ -267,9 +268,11 @@ export default function Index() {
       let x = Math.max(0, Math.min(100 - position.width, mouseX - dragOffset.x));
       let y = Math.max(0, Math.min(100 - position.height, mouseY - dragOffset.y));
 
-      const snapped = snapToNeighbors(dragging, x, y, position.width, position.height);
-      x = snapped.x;
-      y = snapped.y;
+      if (snapEnabled) {
+        const snapped = snapToNeighbors(dragging, x, y, position.width, position.height);
+        x = snapped.x;
+        y = snapped.y;
+      }
 
       setPositions(prev => prev.map(p => 
         p.id === dragging ? { ...p, x, y } : p
@@ -374,8 +377,8 @@ export default function Index() {
       const newY = Math.max(0, Math.min(100 - grid.height, mouseY - dragOffset.y));
       setGrid({ ...grid, x: newX, y: newY });
     } else if (resizingGrid === 'se') {
-      const newWidth = Math.max(10, mouseX - grid.x);
-      const newHeight = Math.max(10, mouseY - grid.y);
+      const newWidth = Math.max(5, mouseX - grid.x);
+      const newHeight = Math.max(5, mouseY - grid.y);
       setGrid({ ...grid, width: Math.min(100 - grid.x, newWidth), height: Math.min(100 - grid.y, newHeight) });
     } else if (rotatingGrid) {
       const centerX = grid.x + grid.width / 2;
@@ -865,6 +868,15 @@ export default function Index() {
                 </div>
               ) : editMode ? (
                 <div className="flex gap-2">
+                  <Button 
+                    onClick={() => setSnapEnabled(!snapEnabled)} 
+                    variant={snapEnabled ? "default" : "outline"} 
+                    size="sm"
+                    title={snapEnabled ? "Прилипание включено" : "Прилипание выключено"}
+                  >
+                    <Icon name="Magnet" size={16} className="mr-2" />
+                    {snapEnabled ? "Прилипание" : "Свободно"}
+                  </Button>
                   <Button onClick={() => setGridMode(true)} variant="outline" size="sm">
                     <Icon name="Grid3x3" size={16} className="mr-2" />
                     Сетка

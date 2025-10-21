@@ -930,17 +930,11 @@ export default function Index() {
                     {snapEnabled ? "Прилипание" : "Свободно"}
                   </Button>
                   <Button onClick={() => {
-                    if (gridMode) {
-                      const assignedCount = Object.keys(gridCellAssignments).length;
-                      if (assignedCount > 0) {
-                        placeBoothsOnGrid();
-                      }
-                    }
                     setGridCellAssignments({});
                     setGridMode(true);
                   }} variant="outline" size="sm">
                     <Icon name="Grid3x3" size={16} className="mr-2" />
-                    {gridMode ? 'Новая сетка' : 'Сетка'}
+                    Сетка
                   </Button>
                   <Button onClick={autoDetectBooths} variant="outline" size="sm" disabled={loading}>
                     <Icon name="Sparkles" size={16} className="mr-2" />
@@ -1147,7 +1141,11 @@ export default function Index() {
                     {Array.from({ length: grid.rows * grid.cols }).map((_, i) => {
                       const assignedBoothId = gridCellAssignments[i];
                       const assignedBooth = assignedBoothId ? booths.find(b => b.id === assignedBoothId) : null;
-                      const availableBooths = booths.filter(b => !Object.values(gridCellAssignments).includes(b.id) || gridCellAssignments[i] === b.id);
+                      const placedBoothIds = positions.map(p => p.id);
+                      const availableBooths = booths.filter(b => 
+                        (!Object.values(gridCellAssignments).includes(b.id) || gridCellAssignments[i] === b.id) &&
+                        (!placedBoothIds.includes(b.id) || gridCellAssignments[i] === b.id)
+                      );
                       
                       return (
                         <div 

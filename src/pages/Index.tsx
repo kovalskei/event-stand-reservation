@@ -116,7 +116,7 @@ export default function Index() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [isMousePanning, setIsMousePanning] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
@@ -124,29 +124,17 @@ export default function Index() {
   const SNAP_THRESHOLD = 1.5;
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.code === 'Space' && !isSpacePressed) {
-        e.preventDefault();
-        setIsSpacePressed(true);
-      }
+    const handleMouseUp = () => {
+      setIsMousePanning(false);
+      setIsPanning(false);
     };
 
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        e.preventDefault();
-        setIsSpacePressed(false);
-        setIsPanning(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
+    window.addEventListener('mouseup', handleMouseUp);
 
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isSpacePressed]);
+  }, []);
 
   useEffect(() => {
     const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
@@ -856,10 +844,31 @@ export default function Index() {
                 aspectRatio: '1920/850',
                 transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                 transformOrigin: 'top left',
-                cursor: isPanning ? 'grabbing' : isSpacePressed ? 'grab' : 'default'
+                cursor: isPanning ? 'grabbing' : isMousePanning ? 'grab' : 'default'
               }}
-              onMouseMove={handleMouseMove}
+              onMouseDown={(e) => {
+                if (!editMode && e.button === 0) {
+                  setIsMousePanning(true);
+                  setDragOffset({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+                }
+              }}
+              onMouseMove={(e) => {
+                if (isMousePanning && !editMode) {
+                  setIsPanning(true);
+                  setPanOffset({
+                    x: e.clientX - dragOffset.x,
+                    y: e.clientY - dragOffset.y
+                  });
+                } else {
+                  handleMouseMove(e);
+                }
+              }}
               onMouseUp={handleMouseUp}
+              onWheel={(e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                setZoom(prev => Math.max(0.5, Math.min(7, prev + delta)));
+              }}
             >
               <img 
                 src={selectedEvent.mapUrl} 
@@ -921,7 +930,7 @@ export default function Index() {
               })}
             </div>
             <div className="absolute bottom-6 left-6 bg-white/90 px-3 py-2 rounded-lg border-2 border-gray-200 text-xs text-gray-600">
-              💡 Нажмите <kbd className="px-2 py-1 bg-gray-100 rounded border border-gray-300 font-mono">Пробел</kbd> и перетаскивайте для навигации
+              💡 Колёсико мыши для зума • Зажмите левую кнопку для перемещения карты
             </div>
           </div>
         </Card>

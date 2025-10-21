@@ -281,23 +281,11 @@ export default function Index() {
       const position = positions.find(p => p.id === rotating);
       if (!position) return;
 
-      const container = containerRef.current;
-      if (!container) return;
-      
-      const rect = container.getBoundingClientRect();
-      const containerWidth = 2400;
-      const containerHeight = 1200;
-      
-      const centerXPx = (position.x / 100) * containerWidth;
-      const centerYPx = (position.y / 100) * containerHeight;
-      const widthPx = (position.width / 100) * containerWidth;
-      const heightPx = (position.height / 100) * containerHeight;
-      
-      const mouseXInContainer = (e.clientX - rect.left) / zoom;
-      const mouseYInContainer = (e.clientY - rect.top) / zoom;
-      
-      const dx = mouseXInContainer - (centerXPx + widthPx / 2);
-      const dy = mouseYInContainer - (centerYPx + heightPx / 2);
+      const centerX = position.x + position.width / 2;
+      const centerY = position.y + position.height / 2;
+
+      const dx = mouseX - centerX;
+      const dy = mouseY - centerY;
       
       const angle = Math.atan2(dy, dx) * (180 / Math.PI);
       const rotation = Math.round(angle);

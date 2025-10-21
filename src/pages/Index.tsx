@@ -572,34 +572,50 @@ export default function Index() {
   const placeBoothsOnGrid = () => {
     const cellWidth = grid.width / grid.cols;
     const cellHeight = grid.height / grid.rows;
-    const newPositions: BoothPosition[] = [];
+    const updatedPositions = [...positions];
+    
+    const totalCells = grid.rows * grid.cols;
+    const boothsToPlace = Math.min(totalCells, booths.length);
     
     let boothIndex = 0;
     for (let row = 0; row < grid.rows; row++) {
       for (let col = 0; col < grid.cols; col++) {
-        if (boothIndex >= booths.length) break;
+        if (boothIndex >= boothsToPlace) break;
         
         const cellX = grid.x + (col * cellWidth);
         const cellY = grid.y + (row * cellHeight);
         
-        newPositions.push({
-          id: booths[boothIndex].id,
-          x: cellX,
-          y: cellY,
-          width: cellWidth * 0.9,
-          height: cellHeight * 0.9,
-          rotation: grid.rotation
-        });
+        const existingIndex = updatedPositions.findIndex(p => p.id === booths[boothIndex].id);
+        
+        if (existingIndex !== -1) {
+          updatedPositions[existingIndex] = {
+            ...updatedPositions[existingIndex],
+            x: cellX,
+            y: cellY,
+            width: cellWidth,
+            height: cellHeight,
+            rotation: grid.rotation
+          };
+        } else {
+          updatedPositions.push({
+            id: booths[boothIndex].id,
+            x: cellX,
+            y: cellY,
+            width: cellWidth,
+            height: cellHeight,
+            rotation: grid.rotation
+          });
+        }
         
         boothIndex++;
       }
     }
     
-    setPositions(newPositions);
+    setPositions(updatedPositions);
     setGridMode(false);
     toast({
       title: 'Стенды размещены',
-      description: `Размещено ${newPositions.length} стендов по сетке`,
+      description: `Размещено ${boothsToPlace} стендов по сетке`,
     });
   };
 
@@ -1108,11 +1124,11 @@ export default function Index() {
                   <div className="absolute inset-0 grid pointer-events-none" style={{
                     gridTemplateRows: `repeat(${grid.rows}, 1fr)`,
                     gridTemplateColumns: `repeat(${grid.cols}, 1fr)`,
-                    gap: '4px',
-                    padding: '4px'
+                    gap: '0px',
+                    padding: '0px'
                   }}>
                     {Array.from({ length: grid.rows * grid.cols }).map((_, i) => (
-                      <div key={i} className="border-2 border-primary/30 bg-white/20 rounded flex items-center justify-center text-xs text-primary font-bold">
+                      <div key={i} className="border border-primary/40 bg-white/20 flex items-center justify-center text-xs text-primary font-bold">
                         {i + 1}
                       </div>
                     ))}

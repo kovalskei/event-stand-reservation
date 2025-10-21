@@ -113,6 +113,7 @@ export default function Index() {
   const [dragging, setDragging] = useState<string | null>(null);
   const [resizing, setResizing] = useState<{ id: string; corner: 'se' | 'sw' | 'ne' | 'nw' } | null>(null);
   const [rotating, setRotating] = useState<string | null>(null);
+  const [boothRotationStart, setBoothRotationStart] = useState<{ angle: number; rotation: number } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [mapChanged, setMapChanged] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -278,18 +279,19 @@ export default function Index() {
       setPositions(prev => prev.map(p => 
         p.id === dragging ? { ...p, x, y } : p
       ));
-    } else if (rotating) {
+    } else if (rotating && boothRotationStart) {
       const position = positions.find(p => p.id === rotating);
       if (!position) return;
 
       const centerX = position.x + position.width / 2;
       const centerY = position.y + position.height / 2;
 
-      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
-      const rotation = Math.round(angle);
+      const currentAngle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
+      const deltaAngle = currentAngle - boothRotationStart.angle;
+      const newRotation = boothRotationStart.rotation + deltaAngle;
 
       setPositions(prev => prev.map(p => 
-        p.id === rotating ? { ...p, rotation } : p
+        p.id === rotating ? { ...p, rotation: Math.round(newRotation) } : p
       ));
     } else if (resizing) {
       const position = positions.find(p => p.id === resizing.id);
@@ -338,6 +340,27 @@ export default function Index() {
     e.preventDefault();
     e.stopPropagation();
     
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const position = positions.find(p => p.id === boothId);
+    if (!position) return;
+    
+    const rect = container.getBoundingClientRect();
+    const containerWidth = 2400;
+    const containerHeight = 1200;
+    
+    const mouseXInContainer = (e.clientX - rect.left) / zoom;
+    const mouseYInContainer = (e.clientY - rect.top) / zoom;
+    
+    const mouseX = (mouseXInContainer / containerWidth) * 100;
+    const mouseY = (mouseYInContainer / containerHeight) * 100;
+    
+    const centerX = position.x + position.width / 2;
+    const centerY = position.y + position.height / 2;
+    const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
+    
+    setBoothRotationStart({ angle, rotation: position.rotation || 0 });
     setRotating(boothId);
   };
 
@@ -349,6 +372,7 @@ export default function Index() {
     setResizingGrid(null);
     setRotatingGrid(false);
     setRotationStart(null);
+    setBoothRotationStart(null);
   };
 
   useEffect(() => {

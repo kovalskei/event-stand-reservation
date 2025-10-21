@@ -113,11 +113,40 @@ export default function Index() {
   const [resizing, setResizing] = useState<{ id: string; corner: 'se' | 'sw' | 'ne' | 'nw' } | null>(null);
   const [zoom, setZoom] = useState(1);
   const [mapChanged, setMapChanged] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
   const SNAP_THRESHOLD = 1.5;
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.code === 'Space' && !isSpacePressed) {
+        e.preventDefault();
+        setIsSpacePressed(true);
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsSpacePressed(false);
+        setIsPanning(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, [isSpacePressed]);
 
   useEffect(() => {
     const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
@@ -389,6 +418,56 @@ export default function Index() {
       title: 'Карта сохранена',
       description: 'URL карты сохранён в localStorage',
     });
+  };
+
+  const autoDetectBooths = async () => {
+    setLoading(true);
+    toast({
+      title: 'Автоопределение стендов',
+      description: 'Анализируем карту...',
+    });
+
+    try {
+      const response = await fetch('https://functions.poehali.dev/c2e9e565-4a01-4b37-8c5b-7853ae94e5bd', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: selectedEvent.mapUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка определения стендов');
+      }
+
+      const data = await response.json();
+      
+      const detectedPositions = data.booths.map((booth: any) => ({
+        id: booth.id,
+        x: booth.x,
+        y: booth.y,
+        width: booth.width,
+        height: booth.height,
+      }));
+
+      setPositions(detectedPositions);
+
+      toast({
+        title: 'Стенды определены',
+        description: `Найдено ${data.count} стендов. Проверьте и скорректируйте позиции.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось определить стенды',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetPositions = () => {
@@ -665,6 +744,10 @@ export default function Index() {
               )}
               {editMode ? (
                 <div className="flex gap-2">
+                  <Button onClick={autoDetectBooths} variant="outline" size="sm" disabled={loading}>
+                    <Icon name="Sparkles" size={16} className="mr-2" />
+                    Автоопределение
+                  </Button>
                   <Button onClick={savePositions} size="sm" className="bg-booth-available hover:bg-booth-available/80">
                     <Icon name="Save" size={16} className="mr-2" />
                     Сохранить
@@ -688,16 +771,24 @@ export default function Index() {
                     >
                       <Icon name="ZoomOut" size={16} />
                     </Button>
-                    <span className="text-sm text-gray-600 font-medium min-w-[50px] text-center">
+                    <span className="text-sm text-gray-600 font-medium min-w-[60px] text-center">
                       {Math.round(zoom * 100)}%
                     </span>
                     <Button 
-                      onClick={() => setZoom(Math.min(2, zoom + 0.1))} 
+                      onClick={() => setZoom(Math.min(7, zoom + 0.1))} 
                       variant="outline" 
                       size="sm"
                       className="px-2"
                     >
                       <Icon name="ZoomIn" size={16} />
+                    </Button>
+                    <Button 
+                      onClick={() => { setZoom(1); setPanOffset({ x: 0, y: 0 }); }} 
+                      variant="outline" 
+                      size="sm"
+                      title="Сбросить масштаб"
+                    >
+                      <Icon name="Maximize2" size={16} />
                     </Button>
                   </div>
                   <Button onClick={() => setShowMapUploadDialog(true)} variant="outline" size="sm">
@@ -739,14 +830,33 @@ export default function Index() {
             </div>
           )}
 
-          <div className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-auto">
+          <div 
+            className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-hidden"
+            style={{ cursor: isSpacePressed ? 'grab' : 'default', height: '600px' }}
+            onMouseDown={(e) => {
+              if (isSpacePressed) {
+                setIsPanning(true);
+                setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
+              }
+            }}
+            onMouseMove={(e) => {
+              if (isPanning && isSpacePressed) {
+                setPanOffset({
+                  x: e.clientX - panStart.x,
+                  y: e.clientY - panStart.y
+                });
+              }
+            }}
+            onMouseUp={() => setIsPanning(false)}
+          >
             <div 
               ref={containerRef}
-              className="relative min-w-[1200px] w-full select-none origin-top-left" 
+              className="relative min-w-[1200px] w-full select-none" 
               style={{ 
                 aspectRatio: '1920/850',
-                transform: `scale(${zoom})`,
-                transformOrigin: 'top left'
+                transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
+                transformOrigin: 'top left',
+                cursor: isPanning ? 'grabbing' : isSpacePressed ? 'grab' : 'default'
               }}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -809,6 +919,9 @@ export default function Index() {
                   </div>
                 );
               })}
+            </div>
+            <div className="absolute bottom-6 left-6 bg-white/90 px-3 py-2 rounded-lg border-2 border-gray-200 text-xs text-gray-600">
+              💡 Нажмите <kbd className="px-2 py-1 bg-gray-100 rounded border border-gray-300 font-mono">Пробел</kbd> и перетаскивайте для навигации
             </div>
           </div>
         </Card>

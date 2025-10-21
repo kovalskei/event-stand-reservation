@@ -926,8 +926,8 @@ export default function Index() {
                     {snapEnabled ? "Прилипание" : "Свободно"}
                   </Button>
                   <Button onClick={() => {
+                    setGridCellAssignments({});
                     setGridMode(true);
-                    setGrid({ x: 10, y: 10, width: 80, height: 60, rotation: 0, rows: 3, cols: 3 });
                   }} variant="outline" size="sm">
                     <Icon name="Grid3x3" size={16} className="mr-2" />
                     Новая сетка
@@ -1225,7 +1225,7 @@ export default function Index() {
                 </div>
               )}
 
-              {!gridMode && booths.map((booth) => {
+              {booths.map((booth) => {
                 const position = positions.find(p => p.id === booth.id);
                 if (!position) return null;
                 

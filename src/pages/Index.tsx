@@ -140,31 +140,31 @@ export default function Index() {
           </div>
 
           <div className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-auto">
-            <div className="relative min-w-[1000px] aspect-[16/9]">
+            <div className="relative min-w-[1200px] w-full" style={{ aspectRatio: '1920/850' }}>
               <img 
                 src="https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png" 
                 alt="План павильона" 
                 className="w-full h-full object-contain"
               />
 
-              <div className="absolute top-[8%] left-[17.5%] right-[4%] grid grid-cols-12 gap-[0.3%]">
+              <div className="absolute top-[3.5%] left-[14.5%] w-[64%] h-[11%] grid grid-cols-12 gap-[0.2%]">
                 {booths.filter(b => b.id.startsWith('A')).map((booth) => (
                   <button
                     key={booth.id}
                     onClick={() => setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold text-sm md:text-base aspect-[1/1.5] rounded transition-all duration-200 transform hover:scale-105 hover:shadow-2xl cursor-pointer flex items-center justify-center`}
+                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded transition-all duration-200 transform hover:scale-105 hover:shadow-2xl cursor-pointer flex items-center justify-center h-full`}
                   >
                     {booth.id}
                   </button>
                 ))}
               </div>
 
-              <div className="absolute top-[33%] left-[36%] right-[44%] grid grid-cols-3 gap-[1%]">
+              <div className="absolute top-[24%] left-[38.5%] w-[16.5%] h-[11%] grid grid-cols-3 gap-[0.5%]">
                 {booths.filter(b => b.id.startsWith('B')).map((booth) => (
                   <button
                     key={booth.id}
                     onClick={() => setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold text-sm md:text-base aspect-[1/1.5] rounded transition-all duration-200 transform hover:scale-105 hover:shadow-2xl cursor-pointer flex items-center justify-center`}
+                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded transition-all duration-200 transform hover:scale-105 hover:shadow-2xl cursor-pointer flex items-center justify-center h-full`}
                   >
                     {booth.id}
                   </button>

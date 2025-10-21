@@ -283,24 +283,24 @@ export default function Index() {
 
       switch (resizing.corner) {
         case 'se':
-          newPos.width = Math.max(2, mouseX - position.x);
-          newPos.height = Math.max(2, mouseY - position.y);
+          newPos.width = Math.max(0.5, mouseX - position.x);
+          newPos.height = Math.max(0.5, mouseY - position.y);
           break;
         case 'sw':
-          const newWidth = Math.max(2, position.x + position.width - mouseX);
+          const newWidth = Math.max(0.5, position.x + position.width - mouseX);
           newPos.x = position.x + position.width - newWidth;
           newPos.width = newWidth;
-          newPos.height = Math.max(2, mouseY - position.y);
+          newPos.height = Math.max(0.5, mouseY - position.y);
           break;
         case 'ne':
-          newPos.width = Math.max(2, mouseX - position.x);
-          const newHeight = Math.max(2, position.y + position.height - mouseY);
+          newPos.width = Math.max(0.5, mouseX - position.x);
+          const newHeight = Math.max(0.5, position.y + position.height - mouseY);
           newPos.y = position.y + position.height - newHeight;
           newPos.height = newHeight;
           break;
         case 'nw':
-          const newW = Math.max(2, position.x + position.width - mouseX);
-          const newH = Math.max(2, position.y + position.height - mouseY);
+          const newW = Math.max(0.5, position.x + position.width - mouseX);
+          const newH = Math.max(0.5, position.y + position.height - mouseY);
           newPos.x = position.x + position.width - newW;
           newPos.y = position.y + position.height - newH;
           newPos.width = newW;
@@ -877,20 +877,21 @@ export default function Index() {
               onMouseUp={handleMouseUp}
               onWheel={(e) => {
                 e.preventDefault();
-                const container = containerRef.current;
+                const container = containerRef.current?.parentElement;
                 if (!container) return;
 
                 const rect = container.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;
                 const mouseY = e.clientY - rect.top;
 
-                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                const delta = e.deltaY > 0 ? -0.15 : 0.15;
                 const newZoom = Math.max(0.5, Math.min(7, zoom + delta));
 
-                const zoomFactor = newZoom / zoom;
-                
-                const newPanX = mouseX - (mouseX - panOffset.x) * zoomFactor;
-                const newPanY = mouseY - (mouseY - panOffset.y) * zoomFactor;
+                const pointX = (mouseX - panOffset.x) / zoom;
+                const pointY = (mouseY - panOffset.y) / zoom;
+
+                const newPanX = mouseX - pointX * newZoom;
+                const newPanY = mouseY - pointY * newZoom;
 
                 setZoom(newZoom);
                 setPanOffset({ x: newPanX, y: newPanY });

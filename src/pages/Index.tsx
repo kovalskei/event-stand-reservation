@@ -904,11 +904,14 @@ export default function Index() {
                     Стендов: {booths.length}
                   </div>
                   <Button onClick={placeBoothsOnGrid} size="sm" className="bg-booth-available hover:bg-booth-available/80">
-                    <Icon name="Grid3x3" size={16} className="mr-2" />
-                    Разместить стенды
+                    <Icon name="Check" size={16} className="mr-2" />
+                    Применить сетку
                   </Button>
-                  <Button onClick={() => setGridMode(false)} variant="outline" size="sm">
-                    Отменить
+                  <Button onClick={() => {
+                    setGridMode(false);
+                    setGridCellAssignments({});
+                  }} variant="outline" size="sm">
+                    Закрыть
                   </Button>
                 </div>
               ) : editMode ? (
@@ -922,9 +925,12 @@ export default function Index() {
                     <Icon name="Magnet" size={16} className="mr-2" />
                     {snapEnabled ? "Прилипание" : "Свободно"}
                   </Button>
-                  <Button onClick={() => setGridMode(true)} variant="outline" size="sm">
+                  <Button onClick={() => {
+                    setGridMode(true);
+                    setGrid({ x: 10, y: 10, width: 80, height: 60, rotation: 0, rows: 3, cols: 3 });
+                  }} variant="outline" size="sm">
                     <Icon name="Grid3x3" size={16} className="mr-2" />
-                    Сетка
+                    Новая сетка
                   </Button>
                   <Button onClick={autoDetectBooths} variant="outline" size="sm" disabled={loading}>
                     <Icon name="Sparkles" size={16} className="mr-2" />
@@ -1275,6 +1281,21 @@ export default function Index() {
                           title="Вращать"
                         >
                           <Icon name="RotateCw" size={10} className="text-white" />
+                        </div>
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPositions(prev => prev.filter(p => p.id !== booth.id));
+                            toast({
+                              title: 'Стенд удален с карты',
+                              description: `Стенд ${booth.id} удален из разметки`,
+                            });
+                          }}
+                          className="absolute bottom-0 left-1/2 w-5 h-5 bg-red-500 rounded-full cursor-pointer border-2 border-white shadow-lg hover:scale-125 transition-transform flex items-center justify-center"
+                          style={{ transform: 'translate(-50%, 150%)' }}
+                          title="Удалить с карты"
+                        >
+                          <Icon name="Trash2" size={10} className="text-white" />
                         </div>
                       </>
                     )}

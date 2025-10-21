@@ -100,6 +100,8 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [sheetUrl, setSheetUrl] = useState('');
   const [showSheetDialog, setShowSheetDialog] = useState(false);
+  const [showMapUploadDialog, setShowMapUploadDialog] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [autoSync, setAutoSync] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -379,6 +381,66 @@ export default function Index() {
     });
   };
 
+  const handleMapUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Ошибка',
+        description: 'Выберите файл изображения',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    toast({
+      title: 'Загрузка изображения',
+      description: 'Подождите, идёт загрузка...',
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('https://api.poehali.dev/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Ошибка загрузки файла');
+      }
+
+      const data = await response.json();
+      const imageUrl = data.url;
+
+      setSelectedEvent(prev => ({
+        ...prev,
+        mapUrl: imageUrl
+      }));
+
+      setShowMapUploadDialog(false);
+
+      toast({
+        title: 'Изображение загружено',
+        description: 'Карта успешно обновлена',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось загрузить изображение',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
   const exportToPDF = async () => {
     const mapElement = containerRef.current;
     if (!mapElement) return;
@@ -588,6 +650,10 @@ export default function Index() {
                 </div>
               ) : (
                 <div className="flex gap-2">
+                  <Button onClick={() => setShowMapUploadDialog(true)} variant="outline" size="sm">
+                    <Icon name="Upload" size={16} className="mr-2" />
+                    Загрузить карту
+                  </Button>
                   <Button onClick={exportToPDF} variant="outline" size="sm">
                     <Icon name="FileDown" size={16} className="mr-2" />
                     Экспорт в PDF
@@ -795,6 +861,8 @@ export default function Index() {
                   <p>• Столбец D: Контакт (опционально)</p>
                   <p>• Столбец E: Размер (опционально)</p>
                   <p>• Столбец F: Цена (опционально)</p>
+                  <p className="mt-2 font-medium text-gray-900">Для загрузки карты из таблицы:</p>
+                  <p>• Добавьте строку: mapUrl в столбец A, URL картинки в столбец B</p>
                 </div>
               </div>
             </div>
@@ -833,6 +901,62 @@ export default function Index() {
                     Загрузить данные
                   </>
                 )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showMapUploadDialog} onOpenChange={setShowMapUploadDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Icon name="Upload" size={24} className="text-primary" />
+              Загрузка карты павильона
+            </DialogTitle>
+            <DialogDescription>
+              Загрузите изображение карты, чтобы обновить фоновую подложку
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Выберите изображение</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleMapUpload}
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/80 cursor-pointer"
+              />
+            </div>
+
+            <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
+              <div className="flex items-start gap-3">
+                <Icon name="Info" size={20} className="text-primary mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-gray-600">
+                  <p className="font-medium text-gray-900 mb-2">Рекомендации:</p>
+                  <p>• Формат: PNG, JPG, JPEG</p>
+                  <p>• Соотношение сторон: 1920×850 (широкоформатное)</p>
+                  <p>• Максимальный размер: 10 МБ</p>
+                  <p>• Изображение будет загружено на сервер poehali.dev</p>
+                </div>
+              </div>
+            </div>
+
+            {selectedEvent.mapUrl && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-gray-700">Текущая карта:</p>
+                <img 
+                  src={selectedEvent.mapUrl} 
+                  alt="Текущая карта" 
+                  className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
+                />
+              </div>
+            )}
+
+            <div className="flex gap-2 justify-end">
+              <Button onClick={() => setShowMapUploadDialog(false)} variant="outline">
+                Закрыть
               </Button>
             </div>
           </div>

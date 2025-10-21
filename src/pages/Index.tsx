@@ -691,13 +691,13 @@ export default function Index() {
     }
   };
 
-  const exportToImage = async () => {
+  const exportToPDF = async () => {
     const mapElement = containerRef.current;
     if (!mapElement) return;
 
     toast({
-      title: 'Сохранение изображения',
-      description: 'Создание скриншота карты...',
+      title: 'Экспорт в PDF',
+      description: 'Подготовка документа...',
     });
 
     try {
@@ -711,7 +711,7 @@ export default function Index() {
       document.body.appendChild(clone);
       
       const canvas = await html2canvas(clone, {
-        scale: 2,
+        scale: 1,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true,
@@ -722,25 +722,58 @@ export default function Index() {
 
       document.body.removeChild(clone);
 
-      canvas.toBlob((blob) => {
-        if (blob) {
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = `${selectedEvent.name}_карта_стендов.png`;
-          link.click();
-          URL.revokeObjectURL(url);
-          
-          toast({
-            title: 'Изображение сохранено',
-            description: 'Карта стендов успешно скачана',
-          });
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      pdf.setFontSize(20);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(selectedEvent.name, 105, 15, { align: 'center' });
+      
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`${selectedEvent.date} • ${selectedEvent.location}`, 105, 23, { align: 'center' });
+      
+      const imgData = canvas.toDataURL('image/jpeg', 0.7);
+      const imgWidth = 190;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, 'JPEG', 10, 30, imgWidth, imgHeight);
+      
+      let yPosition = 30 + imgHeight + 10;
+      
+      const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
+      
+      if (bookedBooths.length > 0) {
+        if (yPosition > 250) {
+          pdf.addPage();
+          yPosition = 15;
         }
-      }, 'image/png');
+        
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Забронированные стенды:', 10, yPosition);
+        yPosition += 8;
+        
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'normal');
+        bookedBooths.forEach((booth) => {
+          if (yPosition > 280) {
+            pdf.addPage();
+            yPosition = 15;
+          }
+          pdf.text(`${booth.id} - ${booth.company}`, 10, yPosition);
+          yPosition += 6;
+        });
+      }
+      
+      pdf.save(`${selectedEvent.name}_карта_стендов.pdf`);
+      
+      toast({
+        title: 'PDF сохранен',
+        description: 'Карта стендов успешно экспортирована',
+      });
     } catch (error) {
       toast({
         title: 'Ошибка',
-        description: 'Не удалось создать изображение',
+        description: 'Не удалось создать PDF',
         variant: 'destructive',
       });
     }
@@ -955,9 +988,9 @@ export default function Index() {
                       Сохранить карту
                     </Button>
                   )}
-                  <Button onClick={exportToImage} variant="outline" size="sm">
-                    <Icon name="Download" size={16} className="mr-2" />
-                    Скачать изображение
+                  <Button onClick={exportToPDF} variant="outline" size="sm">
+                    <Icon name="FileDown" size={16} className="mr-2" />
+                    Экспорт в PDF
                   </Button>
                   <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
                     <Icon name="Edit" size={16} className="mr-2" />

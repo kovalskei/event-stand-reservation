@@ -820,14 +820,7 @@ export default function Index() {
 
           <div 
             className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-hidden"
-            style={{ cursor: isSpacePressed ? 'grab' : 'default', height: '600px' }}
-            onMouseDown={(e) => {
-              if (isSpacePressed) {
-                setIsPanning(true);
-                setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
-              }
-            }}
-
+            style={{ height: '600px' }}
           >
             <div 
               ref={containerRef}

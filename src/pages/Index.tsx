@@ -5,6 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import Papa from 'papaparse';
 
 type BoothStatus = 'available' | 'booked' | 'unavailable';
 
@@ -369,6 +372,83 @@ export default function Index() {
     });
   };
 
+  const exportToPDF = async () => {
+    const mapElement = containerRef.current;
+    if (!mapElement) return;
+
+    toast({
+      title: 'Создание PDF',
+      description: 'Подготовка карты для экспорта...',
+    });
+
+    try {
+      const canvas = await html2canvas(mapElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+      });
+
+      const imgWidth = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      const pdf = new jsPDF({
+        orientation: imgHeight > imgWidth ? 'portrait' : 'landscape',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      
+      let finalWidth = pageWidth - 20;
+      let finalHeight = (canvas.height * finalWidth) / canvas.width;
+      
+      if (finalHeight > pageHeight - 40) {
+        finalHeight = pageHeight - 40;
+        finalWidth = (canvas.width * finalHeight) / canvas.height;
+      }
+
+      const xOffset = (pageWidth - finalWidth) / 2;
+      const yOffset = 20;
+
+      pdf.setFontSize(16);
+      pdf.text(`${selectedEvent.name} - ${selectedEvent.date}`, pageWidth / 2, 12, { align: 'center' });
+      
+      pdf.addImage(
+        canvas.toDataURL('image/png'),
+        'PNG',
+        xOffset,
+        yOffset,
+        finalWidth,
+        finalHeight
+      );
+
+      pdf.setFontSize(8);
+      pdf.text(
+        `Всего стендов: ${stats.total} | Свободно: ${stats.available} | Забронировано: ${stats.booked}`,
+        pageWidth / 2,
+        pageHeight - 8,
+        { align: 'center' }
+      );
+
+      const fileName = `${selectedEvent.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: 'PDF сохранён',
+        description: `Файл ${fileName} успешно загружен`,
+      });
+    } catch (error) {
+      console.error('Ошибка при создании PDF:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось создать PDF файл',
+        variant: 'destructive',
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -378,10 +458,16 @@ export default function Index() {
               <Icon name="CalendarDays" size={32} className="text-primary" />
               <h1 className="text-4xl font-bold text-gray-900">Бронирование стендов</h1>
             </div>
-            <Button onClick={() => setShowSheetDialog(true)} variant="outline">
-              <Icon name="Sheet" size={16} className="mr-2" />
-              Синхронизация с Google Таблицами
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={exportToPDF} variant="outline">
+                <Icon name="Download" size={16} className="mr-2" />
+                Скачать PDF
+              </Button>
+              <Button onClick={() => setShowSheetDialog(true)} variant="outline">
+                <Icon name="Sheet" size={16} className="mr-2" />
+                Синхронизация с Google Таблицами
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">

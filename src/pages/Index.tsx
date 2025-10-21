@@ -1131,28 +1131,45 @@ export default function Index() {
                       const availableBooths = booths.filter(b => !Object.values(gridCellAssignments).includes(b.id) || gridCellAssignments[i] === b.id);
                       
                       return (
-                        <div key={i} className="border border-primary/40 bg-white/20 flex items-center justify-center text-xs relative pointer-events-auto group">
-                          <select
-                            value={assignedBoothId || ''}
-                            onChange={(e) => {
-                              const newAssignments = { ...gridCellAssignments };
-                              if (e.target.value) {
-                                newAssignments[i] = e.target.value;
-                              } else {
+                        <div 
+                          key={i} 
+                          className="border-2 border-primary/60 bg-white/30 flex flex-col items-center justify-center text-xs relative pointer-events-auto group hover:bg-primary/20 transition-colors"
+                        >
+                          {assignedBooth ? (
+                            <div 
+                              className="w-full h-full flex items-center justify-center cursor-pointer font-bold text-primary"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newAssignments = { ...gridCellAssignments };
                                 delete newAssignments[i];
-                              }
-                              setGridCellAssignments(newAssignments);
-                            }}
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-full h-full text-center bg-transparent cursor-pointer hover:bg-primary/10 focus:outline-none focus:bg-primary/20 text-xs font-bold text-primary"
-                          >
-                            <option value="">Ячейка {i + 1}</option>
-                            {availableBooths.map(booth => (
-                              <option key={booth.id} value={booth.id}>
-                                {booth.number}
-                              </option>
-                            ))}
-                          </select>
+                                setGridCellAssignments(newAssignments);
+                              }}
+                              title="Кликните чтобы удалить"
+                            >
+                              {assignedBooth.number}
+                            </div>
+                          ) : (
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  const newAssignments = { ...gridCellAssignments };
+                                  newAssignments[i] = e.target.value;
+                                  setGridCellAssignments(newAssignments);
+                                }
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                              className="w-full h-full text-center bg-transparent cursor-pointer hover:bg-primary/10 focus:outline-none focus:bg-primary/20 font-semibold text-primary/70 px-1"
+                              style={{ fontSize: '0.65rem' }}
+                            >
+                              <option value="">#{i + 1}</option>
+                              {availableBooths.map(booth => (
+                                <option key={booth.id} value={booth.id}>
+                                  {booth.number}
+                                </option>
+                              ))}
+                            </select>
+                          )}
                         </div>
                       );
                     })}

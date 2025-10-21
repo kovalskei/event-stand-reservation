@@ -98,6 +98,9 @@ export default function Index() {
   const [loading, setLoading] = useState(false);
   const [sheetUrl, setSheetUrl] = useState('');
   const [showSheetDialog, setShowSheetDialog] = useState(false);
+  const [autoSync, setAutoSync] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
+  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const [positions, setPositions] = useState<BoothPosition[]>(() => {
     const saved = localStorage.getItem(`booth-positions-${mockEvents[0].id}`);
     return saved ? JSON.parse(saved) : defaultPositions;
@@ -280,17 +283,19 @@ export default function Index() {
     }
   }, [dragging]);
 
-  const loadSheetData = async () => {
+  const loadSheetData = async (silent = false) => {
     if (!sheetUrl.trim()) {
-      toast({
-        title: 'Ошибка',
-        description: 'Введите URL Google Таблицы',
-        variant: 'destructive',
-      });
+      if (!silent) {
+        toast({
+          title: 'Ошибка',
+          description: 'Введите URL Google Таблицы',
+          variant: 'destructive',
+        });
+      }
       return;
     }
 
-    setLoading(true);
+    if (!silent) setLoading(true);
     try {
       const response = await fetch('https://functions.poehali.dev/0a047b83-702c-4547-ae04-ff2dd383ee27', {
         method: 'POST',
@@ -306,21 +311,45 @@ export default function Index() {
       const data = await response.json();
       setBooths(data.booths);
       setShowSheetDialog(false);
+      setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
       
-      toast({
-        title: 'Данные загружены',
-        description: `Синхронизировано ${data.booths.length} стендов`,
-      });
+      if (!silent) {
+        toast({
+          title: 'Данные загружены',
+          description: `Синхронизировано ${data.booths.length} стендов`,
+        });
+      }
     } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: error instanceof Error ? error.message : 'Не удалось загрузить данные из таблицы',
-        variant: 'destructive',
-      });
+      if (!silent) {
+        toast({
+          title: 'Ошибка',
+          description: error instanceof Error ? error.message : 'Не удалось загрузить данные из таблицы',
+          variant: 'destructive',
+        });
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (autoSync && sheetUrl.trim()) {
+      syncIntervalRef.current = setInterval(() => {
+        loadSheetData(true);
+      }, 30000);
+    } else {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+        syncIntervalRef.current = null;
+      }
+    }
+
+    return () => {
+      if (syncIntervalRef.current) {
+        clearInterval(syncIntervalRef.current);
+      }
+    };
+  }, [autoSync, sheetUrl]);
 
   const savePositions = () => {
     localStorage.setItem(`booth-positions-${selectedEvent.id}`, JSON.stringify(positions));
@@ -661,11 +690,29 @@ export default function Index() {
               </div>
             </div>
 
+            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
+              <input
+                type="checkbox"
+                id="auto-sync"
+                checked={autoSync}
+                onChange={(e) => setAutoSync(e.target.checked)}
+                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
+              />
+              <label htmlFor="auto-sync" className="text-sm font-medium text-gray-700 cursor-pointer flex-1">
+                Автоматическое обновление каждые 30 секунд
+              </label>
+              {lastSyncTime && (
+                <span className="text-xs text-gray-500">
+                  Обновлено: {lastSyncTime}
+                </span>
+              )}
+            </div>
+
             <div className="flex gap-2 justify-end">
               <Button onClick={() => setShowSheetDialog(false)} variant="outline">
                 Отменить
               </Button>
-              <Button onClick={loadSheetData} disabled={loading} className="bg-booth-available hover:bg-booth-available/80">
+              <Button onClick={() => loadSheetData(false)} disabled={loading} className="bg-booth-available hover:bg-booth-available/80">
                 {loading ? (
                   <>
                     <Icon name="Loader2" size={16} className="mr-2 animate-spin" />

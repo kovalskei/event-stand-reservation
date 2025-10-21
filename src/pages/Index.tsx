@@ -25,6 +25,7 @@ interface BoothPosition {
   y: number;
   width: number;
   height: number;
+  rotation?: number;
 }
 
 interface Event {
@@ -74,21 +75,21 @@ const initialBooths: Booth[] = [
 ];
 
 const defaultPositions: BoothPosition[] = [
-  { id: 'A1', x: 19, y: 18, width: 5, height: 10.5 },
-  { id: 'A2', x: 24.15, y: 18, width: 5, height: 10.5 },
-  { id: 'A3', x: 29.3, y: 18, width: 5, height: 10.5 },
-  { id: 'A4', x: 34.45, y: 18, width: 5, height: 10.5 },
-  { id: 'A5', x: 39.6, y: 18, width: 5, height: 10.5 },
-  { id: 'A6', x: 44.75, y: 18, width: 5, height: 10.5 },
-  { id: 'A7', x: 49.9, y: 18, width: 5, height: 10.5 },
-  { id: 'A8', x: 55.05, y: 18, width: 5, height: 10.5 },
-  { id: 'A9', x: 60.2, y: 18, width: 5, height: 10.5 },
-  { id: 'A10', x: 65.35, y: 18, width: 5, height: 10.5 },
-  { id: 'A11', x: 70.5, y: 18, width: 5, height: 10.5 },
-  { id: 'A12', x: 75.65, y: 18, width: 5, height: 10.5 },
-  { id: 'B1', x: 43, y: 50.5, width: 4.5, height: 10.5 },
-  { id: 'B2', x: 47.8, y: 50.5, width: 4.5, height: 10.5 },
-  { id: 'B3', x: 52.6, y: 50.5, width: 4.5, height: 10.5 },
+  { id: 'A1', x: 19, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A2', x: 24.15, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A3', x: 29.3, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A4', x: 34.45, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A5', x: 39.6, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A6', x: 44.75, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A7', x: 49.9, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A8', x: 55.05, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A9', x: 60.2, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A10', x: 65.35, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A11', x: 70.5, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'A12', x: 75.65, y: 18, width: 5, height: 10.5, rotation: 0 },
+  { id: 'B1', x: 43, y: 50.5, width: 4.5, height: 10.5, rotation: 0 },
+  { id: 'B2', x: 47.8, y: 50.5, width: 4.5, height: 10.5, rotation: 0 },
+  { id: 'B3', x: 52.6, y: 50.5, width: 4.5, height: 10.5, rotation: 0 },
 ];
 
 export default function Index() {
@@ -111,6 +112,7 @@ export default function Index() {
   });
   const [dragging, setDragging] = useState<string | null>(null);
   const [resizing, setResizing] = useState<{ id: string; corner: 'se' | 'sw' | 'ne' | 'nw' } | null>(null);
+  const [rotating, setRotating] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [mapChanged, setMapChanged] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
@@ -260,6 +262,19 @@ export default function Index() {
       setPositions(prev => prev.map(p => 
         p.id === dragging ? { ...p, x, y } : p
       ));
+    } else if (rotating) {
+      const position = positions.find(p => p.id === rotating);
+      if (!position) return;
+
+      const centerX = position.x + position.width / 2;
+      const centerY = position.y + position.height / 2;
+
+      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
+      const rotation = Math.round(angle / 15) * 15;
+
+      setPositions(prev => prev.map(p => 
+        p.id === rotating ? { ...p, rotation } : p
+      ));
     } else if (resizing) {
       const position = positions.find(p => p.id === resizing.id);
       if (!position) return;
@@ -302,17 +317,26 @@ export default function Index() {
     }
   };
 
+  const handleRotateMouseDown = (e: React.MouseEvent, boothId: string) => {
+    if (!editMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setRotating(boothId);
+  };
+
   const handleMouseUp = () => {
     setDragging(null);
     setResizing(null);
+    setRotating(null);
   };
 
   useEffect(() => {
-    if (dragging) {
+    if (dragging || rotating) {
       window.addEventListener('mouseup', handleMouseUp as any);
       return () => window.removeEventListener('mouseup', handleMouseUp as any);
     }
-  }, [dragging]);
+  }, [dragging, rotating]);
 
   const loadSheetData = async (silent = false) => {
     if (!sheetUrl.trim()) {
@@ -832,19 +856,20 @@ export default function Index() {
                 cursor: isPanning ? 'grabbing' : isMousePanning ? 'grab' : 'default'
               }}
               onMouseDown={(e) => {
-                if (!editMode && e.button === 0) {
+                if (e.button === 0 && e.target === e.currentTarget) {
                   setIsMousePanning(true);
                   setDragOffset({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
                 }
               }}
               onMouseMove={(e) => {
-                if (isMousePanning && !editMode) {
+                if (isMousePanning) {
                   setIsPanning(true);
                   setPanOffset({
                     x: e.clientX - dragOffset.x,
                     y: e.clientY - dragOffset.y
                   });
-                } else {
+                }
+                if (editMode) {
                   handleMouseMove(e);
                 }
               }}
@@ -865,7 +890,7 @@ export default function Index() {
                 const position = positions.find(p => p.id === booth.id);
                 if (!position) return null;
                 
-                const isActive = dragging === booth.id || resizing?.id === booth.id;
+                const isActive = dragging === booth.id || resizing?.id === booth.id || rotating === booth.id;
                 
                 return (
                   <div
@@ -876,6 +901,8 @@ export default function Index() {
                       top: `${position.y}%`,
                       width: `${position.width}%`,
                       height: `${position.height}%`,
+                      transform: `rotate(${position.rotation || 0}deg)`,
+                      transformOrigin: 'center',
                     }}
                   >
                     <button
@@ -908,6 +935,14 @@ export default function Index() {
                           className="absolute top-0 left-0 w-3 h-3 bg-primary rounded-full cursor-nw-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
                           style={{ transform: 'translate(-50%, -50%)' }}
                         />
+                        <div
+                          onMouseDown={(e) => handleRotateMouseDown(e, booth.id)}
+                          className="absolute top-0 left-1/2 w-4 h-4 bg-green-500 rounded-full cursor-grab border-2 border-white shadow-lg hover:scale-125 transition-transform flex items-center justify-center"
+                          style={{ transform: 'translate(-50%, -150%)' }}
+                          title="Вращать"
+                        >
+                          <Icon name="RotateCw" size={10} className="text-white" />
+                        </div>
                       </>
                     )}
                   </div>

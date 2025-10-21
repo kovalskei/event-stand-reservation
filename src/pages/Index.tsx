@@ -844,15 +844,16 @@ export default function Index() {
 
           <div 
             className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-hidden"
-            style={{ height: '600px' }}
+            style={{ height: '800px' }}
           >
             <div 
               ref={containerRef}
-              className="relative min-w-[1200px] w-full select-none" 
+              className="relative w-full select-none" 
               style={{ 
-                aspectRatio: '1920/850',
+                width: '2400px',
+                height: '1200px',
                 transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
-                transformOrigin: 'top left',
+                transformOrigin: '0 0',
                 cursor: isPanning ? 'grabbing' : isMousePanning ? 'grab' : 'default'
               }}
               onMouseDown={(e) => {
@@ -876,8 +877,23 @@ export default function Index() {
               onMouseUp={handleMouseUp}
               onWheel={(e) => {
                 e.preventDefault();
+                const container = containerRef.current;
+                if (!container) return;
+
+                const rect = container.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+
                 const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                setZoom(prev => Math.max(0.5, Math.min(7, prev + delta)));
+                const newZoom = Math.max(0.5, Math.min(7, zoom + delta));
+
+                const zoomFactor = newZoom / zoom;
+                
+                const newPanX = mouseX - (mouseX - panOffset.x) * zoomFactor;
+                const newPanY = mouseY - (mouseY - panOffset.y) * zoomFactor;
+
+                setZoom(newZoom);
+                setPanOffset({ x: newPanX, y: newPanY });
               }}
             >
               <img 

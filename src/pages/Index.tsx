@@ -216,21 +216,14 @@ export default function Index() {
     e.preventDefault();
     e.stopPropagation();
     
-    const container = containerRef.current;
-    if (!container) return;
-    
     const position = positions.find(p => p.id === boothId);
     if (!position) return;
     
-    const rect = container.getBoundingClientRect();
-    const containerWidth = 2400;
-    const containerHeight = 1200;
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
     
-    const mouseXInContainer = (e.clientX - rect.left) / zoom;
-    const mouseYInContainer = (e.clientY - rect.top) / zoom;
-    
-    const offsetX = (mouseXInContainer / containerWidth) * 100 - position.x;
-    const offsetY = (mouseYInContainer / containerHeight) * 100 - position.y;
+    const offsetX = ((e.clientX - rect.left) / rect.width) * position.width;
+    const offsetY = ((e.clientY - rect.top) / rect.height) * position.height;
     
     setDragging(boothId);
     setDragOffset({ x: offsetX, y: offsetY });
@@ -282,7 +275,7 @@ export default function Index() {
       const centerY = position.y + position.height / 2;
 
       const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
-      const rotation = Math.round(angle / 5) * 5;
+      const rotation = Math.round(angle);
 
       setPositions(prev => prev.map(p => 
         p.id === rotating ? { ...p, rotation } : p

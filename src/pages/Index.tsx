@@ -226,11 +226,8 @@ export default function Index() {
     const containerWidth = 2400;
     const containerHeight = 1200;
     
-    const mouseXInContainer = (e.clientX - rect.left - panOffset.x) / zoom;
-    const mouseYInContainer = (e.clientY - rect.top - panOffset.y) / zoom;
-    
-    const mouseX = (mouseXInContainer / containerWidth) * 100;
-    const mouseY = (mouseYInContainer / containerHeight) * 100;
+    const mouseX = ((e.clientX - rect.left) / zoom / containerWidth) * 100;
+    const mouseY = ((e.clientY - rect.top) / zoom / containerHeight) * 100;
     
     const offsetX = mouseX - position.x;
     const offsetY = mouseY - position.y;
@@ -257,8 +254,8 @@ export default function Index() {
     const containerWidth = 2400;
     const containerHeight = 1200;
     
-    const mouseXInContainer = (e.clientX - rect.left - panOffset.x) / zoom;
-    const mouseYInContainer = (e.clientY - rect.top - panOffset.y) / zoom;
+    const mouseXInContainer = (e.clientX - rect.left) / zoom;
+    const mouseYInContainer = (e.clientY - rect.top) / zoom;
     
     const mouseX = (mouseXInContainer / containerWidth) * 100;
     const mouseY = (mouseYInContainer / containerHeight) * 100;
@@ -284,10 +281,7 @@ export default function Index() {
       const centerX = position.x + position.width / 2;
       const centerY = position.y + position.height / 2;
 
-      const dx = mouseX - centerX;
-      const dy = mouseY - centerY;
-      
-      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
       const rotation = Math.round(angle);
 
       setPositions(prev => prev.map(p => 
@@ -453,10 +447,55 @@ export default function Index() {
   const autoDetectBooths = async () => {
     setLoading(true);
     toast({
-      title: 'Распознавание стендов',
-      description: 'Временно недоступно. Используйте ручное редактирование.',
+      title: 'Автоопределение стендов',
+      description: 'Анализируем карту...',
     });
-    setLoading(false);
+
+    try {
+      const response = await fetch('https://functions.poehali.dev/c2e9e565-4a01-4b37-8c5b-7853ae94e5bd', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image: selectedEvent.mapUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка определения стендов');
+      }
+
+      const data = await response.json();
+      
+      const detectedPositions = data.booths.map((booth: any) => {
+        const existing = positions.find(p => p.id === booth.id);
+        return {
+          id: booth.id,
+          x: booth.x,
+          y: booth.y,
+          width: booth.width,
+          height: booth.height,
+          rotation: existing?.rotation || 0,
+        };
+      });
+
+      setPositions(detectedPositions);
+
+      toast({
+        title: 'Стенды определены',
+        description: `Найдено ${data.count} стендов. Проверьте и скорректируйте позиции.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось определить стенды',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const resetPositions = () => {

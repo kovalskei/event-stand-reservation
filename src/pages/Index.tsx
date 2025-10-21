@@ -139,67 +139,36 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="relative bg-slate-50 rounded-xl p-8 border-2 border-gray-200">
-            <img 
-              src="https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png" 
-              alt="План павильона" 
-              className="w-full opacity-30 absolute inset-0 object-contain pointer-events-none"
-            />
+          <div className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-auto">
+            <div className="relative min-w-[1000px] aspect-[16/9]">
+              <img 
+                src="https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png" 
+                alt="План павильона" 
+                className="w-full h-full object-contain"
+              />
 
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4 px-4">
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Icon name="ArrowDown" size={20} />
-                  <span className="text-sm font-medium">ПРОХОД В ЗАЛ</span>
-                </div>
-                <div className="flex items-center gap-2 text-gray-500">
-                  <span className="text-sm font-medium">ВХОД</span>
-                  <Icon name="ArrowRight" size={20} />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-12 gap-2 mb-6">
+              <div className="absolute top-[8%] left-[17.5%] right-[4%] grid grid-cols-12 gap-[0.3%]">
                 {booths.filter(b => b.id.startsWith('A')).map((booth) => (
                   <button
                     key={booth.id}
                     onClick={() => setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold py-6 rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg cursor-pointer border-2 border-white`}
+                    className={`${getBoothColor(booth.status)} text-white font-bold text-sm md:text-base aspect-[1/1.5] rounded transition-all duration-200 transform hover:scale-105 hover:shadow-2xl cursor-pointer flex items-center justify-center`}
                   >
                     {booth.id}
                   </button>
                 ))}
               </div>
 
-              <div className="flex items-center justify-center gap-8 mb-6 py-4">
-                <div className="text-center p-4 bg-white rounded-lg border-2 border-gray-200">
-                  <Icon name="Users" size={24} className="mx-auto mb-1 text-gray-600" />
-                  <p className="text-xs text-gray-500 font-medium">КОВОРКИНГ</p>
-                </div>
-                <div className="text-center p-4 bg-orange-100 rounded-lg border-2 border-orange-200">
-                  <Icon name="Camera" size={24} className="mx-auto mb-1 text-orange-600" />
-                  <p className="text-xs text-orange-600 font-medium">ФОТОЗОНА</p>
-                </div>
-                <div className="text-center p-4 bg-white rounded-lg border-2 border-gray-200">
-                  <Icon name="Users" size={24} className="mx-auto mb-1 text-gray-600" />
-                  <p className="text-xs text-gray-500 font-medium">КОВОРКИНГ</p>
-                </div>
-              </div>
-
-              <div className="flex justify-center gap-2 mb-6">
+              <div className="absolute top-[33%] left-[36%] right-[44%] grid grid-cols-3 gap-[1%]">
                 {booths.filter(b => b.id.startsWith('B')).map((booth) => (
                   <button
                     key={booth.id}
                     onClick={() => setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold py-6 px-12 rounded-lg transition-all duration-200 transform hover:scale-105 hover:shadow-lg cursor-pointer border-2 border-white`}
+                    className={`${getBoothColor(booth.status)} text-white font-bold text-sm md:text-base aspect-[1/1.5] rounded transition-all duration-200 transform hover:scale-105 hover:shadow-2xl cursor-pointer flex items-center justify-center`}
                   >
                     {booth.id}
                   </button>
                 ))}
-              </div>
-
-              <div className="text-center p-6 bg-gradient-to-r from-slate-100 to-slate-50 rounded-lg border-2 border-slate-200">
-                <Icon name="Utensils" size={32} className="mx-auto mb-2 text-gray-600" />
-                <p className="text-sm text-gray-700 font-bold">ФУРШЕТНАЯ ЗОНА</p>
               </div>
             </div>
           </div>

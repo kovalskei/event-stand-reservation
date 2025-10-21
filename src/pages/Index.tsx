@@ -295,11 +295,8 @@ export default function Index() {
         backgroundColor: '#ffffff',
       });
 
-      const imgWidth = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
       const pdf = new jsPDF({
-        orientation: imgHeight > imgWidth ? 'portrait' : 'landscape',
+        orientation: 'landscape',
         unit: 'mm',
         format: 'a4',
       });
@@ -307,36 +304,69 @@ export default function Index() {
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
-      let finalWidth = pageWidth - 20;
-      let finalHeight = (canvas.height * finalWidth) / canvas.width;
-      
-      if (finalHeight > pageHeight - 40) {
-        finalHeight = pageHeight - 40;
-        finalWidth = (canvas.width * finalHeight) / canvas.height;
-      }
-
-      const xOffset = (pageWidth - finalWidth) / 2;
-      const yOffset = 20;
-
       pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
       pdf.text(`${selectedEvent.name} - ${selectedEvent.date}`, pageWidth / 2, 12, { align: 'center' });
+      
+      const mapWidth = pageWidth - 20;
+      const mapHeight = (canvas.height * mapWidth) / canvas.width;
+      const maxMapHeight = pageHeight * 0.5;
+      
+      let finalMapWidth = mapWidth;
+      let finalMapHeight = mapHeight;
+      
+      if (mapHeight > maxMapHeight) {
+        finalMapHeight = maxMapHeight;
+        finalMapWidth = (canvas.width * finalMapHeight) / canvas.height;
+      }
+      
+      const xOffset = (pageWidth - finalMapWidth) / 2;
+      const yOffset = 18;
       
       pdf.addImage(
         canvas.toDataURL('image/png'),
         'PNG',
         xOffset,
         yOffset,
-        finalWidth,
-        finalHeight
+        finalMapWidth,
+        finalMapHeight
       );
 
-      pdf.setFontSize(8);
+      let currentY = yOffset + finalMapHeight + 10;
+
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
       pdf.text(
         `Всего стендов: ${stats.total} | Свободно: ${stats.available} | Забронировано: ${stats.booked}`,
         pageWidth / 2,
-        pageHeight - 8,
+        currentY,
         { align: 'center' }
       );
+
+      currentY += 8;
+
+      const bookedBooths = booths.filter(b => b.status === 'booked');
+      
+      if (bookedBooths.length > 0) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Забронированные стенды:', 10, currentY);
+        currentY += 6;
+
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'normal');
+
+        bookedBooths.forEach((booth) => {
+          if (currentY > pageHeight - 15) {
+            pdf.addPage();
+            currentY = 15;
+          }
+          
+          const text = `${booth.id} - ${booth.company || 'Без названия'}`;
+          pdf.text(text, 10, currentY);
+          currentY += 5;
+        });
+      }
 
       const fileName = `${selectedEvent.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
       pdf.save(fileName);

@@ -75,17 +75,26 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         file_extension = file_name.split('.')[-1] if '.' in file_name else 'png'
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
         
-        cdn_url = f"https://cdn.poehali.dev/files/{unique_filename}"
+        upload_api_url = "https://api.poehali.dev/upload"
         
-        upload_response = requests.put(
-            cdn_url,
-            data=file_bytes,
-            headers={'Content-Type': f'image/{file_extension}'},
+        files = {
+            'file': (file_name, file_bytes, f'image/{file_extension}')
+        }
+        
+        upload_response = requests.post(
+            upload_api_url,
+            files=files,
             timeout=30
         )
         
         if upload_response.status_code not in [200, 201]:
-            raise Exception(f'CDN upload failed: {upload_response.status_code}')
+            raise Exception(f'Upload failed: {upload_response.status_code} - {upload_response.text}')
+        
+        response_data = upload_response.json()
+        cdn_url = response_data.get('url', '')
+        
+        if not cdn_url:
+            raise Exception('No URL in upload response')
         
         return {
             'statusCode': 200,

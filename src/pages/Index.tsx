@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 import Icon from '@/components/ui/icon';
 
 type BoothStatus = 'available' | 'booked' | 'unavailable';
@@ -11,6 +13,14 @@ interface Booth {
   status: BoothStatus;
   company?: string;
   contact?: string;
+}
+
+interface BoothPosition {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
 const initialBooths: Booth[] = [
@@ -31,9 +41,36 @@ const initialBooths: Booth[] = [
   { id: 'B3', status: 'booked', company: 'ЭкоЛайн', contact: 'Морозова Е.В.' },
 ];
 
+const defaultPositions: BoothPosition[] = [
+  { id: 'A1', x: 19, y: 18, width: 5, height: 10.5 },
+  { id: 'A2', x: 24.15, y: 18, width: 5, height: 10.5 },
+  { id: 'A3', x: 29.3, y: 18, width: 5, height: 10.5 },
+  { id: 'A4', x: 34.45, y: 18, width: 5, height: 10.5 },
+  { id: 'A5', x: 39.6, y: 18, width: 5, height: 10.5 },
+  { id: 'A6', x: 44.75, y: 18, width: 5, height: 10.5 },
+  { id: 'A7', x: 49.9, y: 18, width: 5, height: 10.5 },
+  { id: 'A8', x: 55.05, y: 18, width: 5, height: 10.5 },
+  { id: 'A9', x: 60.2, y: 18, width: 5, height: 10.5 },
+  { id: 'A10', x: 65.35, y: 18, width: 5, height: 10.5 },
+  { id: 'A11', x: 70.5, y: 18, width: 5, height: 10.5 },
+  { id: 'A12', x: 75.65, y: 18, width: 5, height: 10.5 },
+  { id: 'B1', x: 43, y: 50.5, width: 4.5, height: 10.5 },
+  { id: 'B2', x: 47.8, y: 50.5, width: 4.5, height: 10.5 },
+  { id: 'B3', x: 52.6, y: 50.5, width: 4.5, height: 10.5 },
+];
+
 export default function Index() {
   const [booths] = useState<Booth[]>(initialBooths);
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [positions, setPositions] = useState<BoothPosition[]>(() => {
+    const saved = localStorage.getItem('booth-positions');
+    return saved ? JSON.parse(saved) : defaultPositions;
+  });
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+  const { toast } = useToast();
 
   const getBoothColor = (status: BoothStatus) => {
     switch (status) {
@@ -61,6 +98,68 @@ export default function Index() {
     total: booths.length,
     available: booths.filter(b => b.status === 'available').length,
     booked: booths.filter(b => b.status === 'booked').length,
+  };
+
+  const handleMouseDown = (e: React.MouseEvent, boothId: string) => {
+    if (!editMode) return;
+    e.preventDefault();
+    
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const position = positions.find(p => p.id === boothId);
+    if (!position) return;
+    
+    const offsetX = (e.clientX - rect.left) / rect.width * 100 - position.x;
+    const offsetY = (e.clientY - rect.top) / rect.height * 100 - position.y;
+    
+    setDragging(boothId);
+    setDragOffset({ x: offsetX, y: offsetY });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!editMode || !dragging) return;
+    
+    const container = containerRef.current;
+    if (!container) return;
+    
+    const rect = container.getBoundingClientRect();
+    const x = Math.max(0, Math.min(95, (e.clientX - rect.left) / rect.width * 100 - dragOffset.x));
+    const y = Math.max(0, Math.min(95, (e.clientY - rect.top) / rect.height * 100 - dragOffset.y));
+    
+    setPositions(prev => prev.map(p => 
+      p.id === dragging ? { ...p, x, y } : p
+    ));
+  };
+
+  const handleMouseUp = () => {
+    setDragging(null);
+  };
+
+  useEffect(() => {
+    if (dragging) {
+      window.addEventListener('mouseup', handleMouseUp as any);
+      return () => window.removeEventListener('mouseup', handleMouseUp as any);
+    }
+  }, [dragging]);
+
+  const savePositions = () => {
+    localStorage.setItem('booth-positions', JSON.stringify(positions));
+    toast({
+      title: 'Позиции сохранены',
+      description: 'Разметка стендов успешно сохранена',
+    });
+    setEditMode(false);
+  };
+
+  const resetPositions = () => {
+    setPositions(defaultPositions);
+    localStorage.removeItem('booth-positions');
+    toast({
+      title: 'Позиции сброшены',
+      description: 'Разметка возвращена к настройкам по умолчанию',
+    });
   };
 
   return (
@@ -127,49 +226,89 @@ export default function Index() {
         <Card className="p-8 bg-white shadow-xl animate-fade-in">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold text-gray-900">Интерактивная карта павильона</h2>
-            <div className="flex gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-booth-available"></div>
-                <span className="text-sm text-gray-600">Свободен</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-booth-booked"></div>
-                <span className="text-sm text-gray-600">Забронирован</span>
-              </div>
+            <div className="flex gap-4 items-center">
+              {!editMode && (
+                <>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-booth-available"></div>
+                    <span className="text-sm text-gray-600">Свободен</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-booth-booked"></div>
+                    <span className="text-sm text-gray-600">Забронирован</span>
+                  </div>
+                </>
+              )}
+              {editMode ? (
+                <div className="flex gap-2">
+                  <Button onClick={savePositions} size="sm" className="bg-booth-available hover:bg-booth-available/80">
+                    <Icon name="Save" size={16} className="mr-2" />
+                    Сохранить
+                  </Button>
+                  <Button onClick={resetPositions} variant="outline" size="sm">
+                    <Icon name="RotateCcw" size={16} className="mr-2" />
+                    Сбросить
+                  </Button>
+                  <Button onClick={() => setEditMode(false)} variant="outline" size="sm">
+                    Отменить
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
+                  <Icon name="Edit" size={16} className="mr-2" />
+                  Настроить разметку
+                </Button>
+              )}
             </div>
           </div>
 
+          {editMode && (
+            <div className="mb-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
+              <div className="flex items-start gap-3">
+                <Icon name="Info" size={20} className="text-primary mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-gray-900">Режим редактирования</p>
+                  <p className="text-xs text-gray-600 mt-1">Перетаскивайте стенды мышью для точного позиционирования. Нажмите "Сохранить" для применения изменений.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-auto">
-            <div className="relative min-w-[1200px] w-full" style={{ aspectRatio: '1920/850' }}>
+            <div 
+              ref={containerRef}
+              className="relative min-w-[1200px] w-full select-none" 
+              style={{ aspectRatio: '1920/850' }}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+            >
               <img 
                 src="https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png" 
                 alt="План павильона" 
-                className="w-full h-full object-contain"
+                className="w-full h-full object-contain pointer-events-none"
               />
 
-              <div className="absolute top-[18%] left-[19%] w-[62.5%] h-[10.5%] grid grid-cols-12 gap-[0.15%]">
-                {booths.filter(b => b.id.startsWith('A')).map((booth) => (
+              {booths.map((booth) => {
+                const position = positions.find(p => p.id === booth.id);
+                if (!position) return null;
+                
+                return (
                   <button
                     key={booth.id}
-                    onClick={() => setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 transform hover:scale-110 hover:shadow-2xl hover:z-50 cursor-pointer flex items-center justify-center h-full border border-white/20`}
+                    onMouseDown={(e) => handleMouseDown(e, booth.id)}
+                    onClick={() => !editMode && setSelectedBooth(booth)}
+                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 ${editMode ? 'cursor-move hover:ring-4 hover:ring-primary/50' : 'cursor-pointer hover:scale-110 hover:shadow-2xl'} absolute flex items-center justify-center border-2 ${editMode ? 'border-primary' : 'border-white/20'} ${dragging === booth.id ? 'z-50 shadow-2xl ring-4 ring-primary' : 'hover:z-40'}`}
+                    style={{
+                      left: `${position.x}%`,
+                      top: `${position.y}%`,
+                      width: `${position.width}%`,
+                      height: `${position.height}%`,
+                    }}
                   >
                     {booth.id}
                   </button>
-                ))}
-              </div>
-
-              <div className="absolute top-[50.5%] left-[43%] w-[14.5%] h-[10.5%] grid grid-cols-3 gap-[0.3%]">
-                {booths.filter(b => b.id.startsWith('B')).map((booth) => (
-                  <button
-                    key={booth.id}
-                    onClick={() => setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 transform hover:scale-110 hover:shadow-2xl hover:z-50 cursor-pointer flex items-center justify-center h-full border border-white/20`}
-                  >
-                    {booth.id}
-                  </button>
-                ))}
-              </div>
+                );
+              })}
             </div>
           </div>
         </Card>

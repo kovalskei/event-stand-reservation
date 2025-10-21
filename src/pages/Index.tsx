@@ -147,24 +147,24 @@ export default function Index() {
                 className="w-full h-full object-contain"
               />
 
-              <div className="absolute top-[3.5%] left-[14.5%] w-[64%] h-[11%] grid grid-cols-12 gap-[0.2%]">
+              <div className="absolute top-[18%] left-[19%] w-[62.5%] h-[10.5%] grid grid-cols-12 gap-[0.15%]">
                 {booths.filter(b => b.id.startsWith('A')).map((booth) => (
                   <button
                     key={booth.id}
                     onClick={() => setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded transition-all duration-200 transform hover:scale-105 hover:shadow-2xl cursor-pointer flex items-center justify-center h-full`}
+                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 transform hover:scale-110 hover:shadow-2xl hover:z-50 cursor-pointer flex items-center justify-center h-full border border-white/20`}
                   >
                     {booth.id}
                   </button>
                 ))}
               </div>
 
-              <div className="absolute top-[24%] left-[38.5%] w-[16.5%] h-[11%] grid grid-cols-3 gap-[0.5%]">
+              <div className="absolute top-[50.5%] left-[43%] w-[14.5%] h-[10.5%] grid grid-cols-3 gap-[0.3%]">
                 {booths.filter(b => b.id.startsWith('B')).map((booth) => (
                   <button
                     key={booth.id}
                     onClick={() => setSelectedBooth(booth)}
-                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded transition-all duration-200 transform hover:scale-105 hover:shadow-2xl cursor-pointer flex items-center justify-center h-full`}
+                    className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 transform hover:scale-110 hover:shadow-2xl hover:z-50 cursor-pointer flex items-center justify-center h-full border border-white/20`}
                   >
                     {booth.id}
                   </button>

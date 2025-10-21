@@ -219,18 +219,11 @@ export default function Index() {
     const position = positions.find(p => p.id === boothId);
     if (!position) return;
     
-    const container = containerRef.current;
-    if (!container) return;
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
     
-    const rect = container.getBoundingClientRect();
-    const containerWidth = 2400;
-    const containerHeight = 1200;
-    
-    const mouseX = ((e.clientX - rect.left) / zoom / containerWidth) * 100;
-    const mouseY = ((e.clientY - rect.top) / zoom / containerHeight) * 100;
-    
-    const offsetX = mouseX - position.x;
-    const offsetY = mouseY - position.y;
+    const offsetX = ((e.clientX - rect.left) / rect.width) * position.width;
+    const offsetY = ((e.clientY - rect.top) / rect.height) * position.height;
     
     setDragging(boothId);
     setDragOffset({ x: offsetX, y: offsetY });
@@ -469,17 +462,13 @@ export default function Index() {
 
       const data = await response.json();
       
-      const detectedPositions = data.booths.map((booth: any) => {
-        const existing = positions.find(p => p.id === booth.id);
-        return {
-          id: booth.id,
-          x: booth.x,
-          y: booth.y,
-          width: booth.width,
-          height: booth.height,
-          rotation: existing?.rotation || 0,
-        };
-      });
+      const detectedPositions = data.booths.map((booth: any) => ({
+        id: booth.id,
+        x: booth.x,
+        y: booth.y,
+        width: booth.width,
+        height: booth.height,
+      }));
 
       setPositions(detectedPositions);
 

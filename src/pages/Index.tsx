@@ -13,6 +13,8 @@ interface Booth {
   status: BoothStatus;
   company?: string;
   contact?: string;
+  price?: string;
+  size?: string;
 }
 
 interface BoothPosition {
@@ -23,22 +25,50 @@ interface BoothPosition {
   height: number;
 }
 
+interface Event {
+  id: string;
+  name: string;
+  date: string;
+  location: string;
+  mapUrl: string;
+  sheetId: string;
+}
+
+const mockEvents: Event[] = [
+  {
+    id: '1',
+    name: 'Выставка 2025',
+    date: '15-20 марта 2025',
+    location: 'Павильон 1',
+    mapUrl: 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+    sheetId: '',
+  },
+  {
+    id: '2',
+    name: 'Tech Forum 2025',
+    date: '5-10 апреля 2025',
+    location: 'Павильон 2',
+    mapUrl: 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+    sheetId: '',
+  },
+];
+
 const initialBooths: Booth[] = [
   { id: 'A1', status: 'available' },
-  { id: 'A2', status: 'booked', company: 'ТехноПром', contact: 'Иванов И.И.' },
+  { id: 'A2', status: 'booked', company: 'ТехноПром', contact: 'Иванов И.И.', price: '50 000 ₽', size: '3x3 м' },
   { id: 'A3', status: 'available' },
   { id: 'A4', status: 'available' },
-  { id: 'A5', status: 'booked', company: 'ИнноВейт', contact: 'Петрова А.С.' },
+  { id: 'A5', status: 'booked', company: 'ИнноВейт', contact: 'Петрова А.С.', price: '50 000 ₽', size: '3x3 м' },
   { id: 'A6', status: 'available' },
   { id: 'A7', status: 'available' },
   { id: 'A8', status: 'available' },
   { id: 'A9', status: 'available' },
-  { id: 'A10', status: 'booked', company: 'МегаСтрой', contact: 'Сидоров П.П.' },
+  { id: 'A10', status: 'booked', company: 'МегаСтрой', contact: 'Сидоров П.П.', price: '50 000 ₽', size: '3x3 м' },
   { id: 'A11', status: 'available' },
   { id: 'A12', status: 'available' },
   { id: 'B1', status: 'available' },
   { id: 'B2', status: 'available' },
-  { id: 'B3', status: 'booked', company: 'ЭкоЛайн', contact: 'Морозова Е.В.' },
+  { id: 'B3', status: 'booked', company: 'ЭкоЛайн', contact: 'Морозова Е.В.', price: '75 000 ₽', size: '4x4 м' },
 ];
 
 const defaultPositions: BoothPosition[] = [
@@ -60,11 +90,16 @@ const defaultPositions: BoothPosition[] = [
 ];
 
 export default function Index() {
-  const [booths] = useState<Booth[]>(initialBooths);
+  const [events] = useState<Event[]>(mockEvents);
+  const [selectedEvent, setSelectedEvent] = useState<Event>(mockEvents[0]);
+  const [booths, setBooths] = useState<Booth[]>(initialBooths);
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [showSheetDialog, setShowSheetDialog] = useState(false);
   const [positions, setPositions] = useState<BoothPosition[]>(() => {
-    const saved = localStorage.getItem('booth-positions');
+    const saved = localStorage.getItem(`booth-positions-${mockEvents[0].id}`);
     return saved ? JSON.parse(saved) : defaultPositions;
   });
   const [dragging, setDragging] = useState<string | null>(null);
@@ -74,6 +109,15 @@ export default function Index() {
   const { toast } = useToast();
 
   const SNAP_THRESHOLD = 1.5;
+
+  useEffect(() => {
+    const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
+    if (saved) {
+      setPositions(JSON.parse(saved));
+    } else {
+      setPositions(defaultPositions);
+    }
+  }, [selectedEvent.id]);
 
   const getBoothColor = (status: BoothStatus) => {
     switch (status) {
@@ -236,8 +280,50 @@ export default function Index() {
     }
   }, [dragging]);
 
+  const loadSheetData = async () => {
+    if (!sheetUrl.trim()) {
+      toast({
+        title: 'Ошибка',
+        description: 'Введите URL Google Таблицы',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await fetch('https://functions.poehali.dev/0a047b83-702c-4547-ae04-ff2dd383ee27', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheetUrl }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Ошибка загрузки данных');
+      }
+
+      const data = await response.json();
+      setBooths(data.booths);
+      setShowSheetDialog(false);
+      
+      toast({
+        title: 'Данные загружены',
+        description: `Синхронизировано ${data.booths.length} стендов`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось загрузить данные из таблицы',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const savePositions = () => {
-    localStorage.setItem('booth-positions', JSON.stringify(positions));
+    localStorage.setItem(`booth-positions-${selectedEvent.id}`, JSON.stringify(positions));
     toast({
       title: 'Позиции сохранены',
       description: 'Разметка стендов успешно сохранена',
@@ -247,7 +333,7 @@ export default function Index() {
 
   const resetPositions = () => {
     setPositions(defaultPositions);
-    localStorage.removeItem('booth-positions');
+    localStorage.removeItem(`booth-positions-${selectedEvent.id}`);
     toast({
       title: 'Позиции сброшены',
       description: 'Разметка возвращена к настройкам по умолчанию',
@@ -257,12 +343,35 @@ export default function Index() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <header className="mb-8 animate-fade-in">
-          <div className="flex items-center gap-3 mb-2">
-            <Icon name="CalendarDays" size={32} className="text-primary" />
-            <h1 className="text-4xl font-bold text-gray-900">Бронирование стендов</h1>
+        <header className="mb-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Icon name="CalendarDays" size={32} className="text-primary" />
+              <h1 className="text-4xl font-bold text-gray-900">Бронирование стендов</h1>
+            </div>
+            <Button onClick={() => setShowSheetDialog(true)} variant="outline">
+              <Icon name="Sheet" size={16} className="mr-2" />
+              Синхронизация с Google Таблицами
+            </Button>
           </div>
-          <p className="text-gray-600 text-lg">Выставка 2025 • Павильон 1</p>
+
+          <div className="flex items-center gap-4">
+            <label className="text-sm font-medium text-gray-600">Мероприятие:</label>
+            <select
+              value={selectedEvent.id}
+              onChange={(e) => {
+                const event = events.find(ev => ev.id === e.target.value);
+                if (event) setSelectedEvent(event);
+              }}
+              className="px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 font-medium focus:border-primary focus:outline-none transition-colors"
+            >
+              {events.map(event => (
+                <option key={event.id} value={event.id}>
+                  {event.name} • {event.date} • {event.location}
+                </option>
+              ))}
+            </select>
+          </div>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
@@ -379,7 +488,7 @@ export default function Index() {
               onMouseUp={handleMouseUp}
             >
               <img 
-                src="https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png" 
+                src={selectedEvent.mapUrl} 
                 alt="План павильона" 
                 className="w-full h-full object-contain pointer-events-none"
               />
@@ -463,6 +572,26 @@ export default function Index() {
               </Badge>
             </div>
 
+            {selectedBooth?.size && (
+              <div className="p-4 bg-slate-50 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Icon name="Maximize" size={18} />
+                  <span className="text-sm font-medium">Размер</span>
+                </div>
+                <p className="text-gray-900 font-semibold pl-6">{selectedBooth.size}</p>
+              </div>
+            )}
+
+            {selectedBooth?.price && (
+              <div className="p-4 bg-slate-50 rounded-lg space-y-2">
+                <div className="flex items-center gap-2 text-gray-600">
+                  <Icon name="DollarSign" size={18} />
+                  <span className="text-sm font-medium">Стоимость</span>
+                </div>
+                <p className="text-gray-900 font-semibold pl-6">{selectedBooth.price}</p>
+              </div>
+            )}
+
             {selectedBooth?.status === 'booked' && (
               <>
                 <div className="p-4 bg-slate-50 rounded-lg space-y-2">
@@ -490,6 +619,66 @@ export default function Index() {
                 <p className="text-gray-600 text-sm mt-2">Свяжитесь с менеджером для оформления брони</p>
               </div>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showSheetDialog} onOpenChange={setShowSheetDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-2xl flex items-center gap-2">
+              <Icon name="Sheet" size={24} className="text-primary" />
+              Синхронизация с Google Таблицами
+            </DialogTitle>
+            <DialogDescription>
+              Подключите Google Таблицу для автоматической синхронизации статусов бронирования
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">URL Google Таблицы</label>
+              <input
+                type="url"
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                placeholder="https://docs.google.com/spreadsheets/d/..."
+                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition-colors"
+              />
+            </div>
+
+            <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
+              <div className="flex items-start gap-3">
+                <Icon name="Info" size={20} className="text-primary mt-0.5 flex-shrink-0" />
+                <div className="text-xs text-gray-600">
+                  <p className="font-medium text-gray-900 mb-2">Формат таблицы:</p>
+                  <p>• Столбец A: Номер стенда (A1, A2, B1...)</p>
+                  <p>• Столбец B: Статус (available/booked/unavailable)</p>
+                  <p>• Столбец C: Компания (опционально)</p>
+                  <p>• Столбец D: Контакт (опционально)</p>
+                  <p>• Столбец E: Размер (опционально)</p>
+                  <p>• Столбец F: Цена (опционально)</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <Button onClick={() => setShowSheetDialog(false)} variant="outline">
+                Отменить
+              </Button>
+              <Button onClick={loadSheetData} disabled={loading} className="bg-booth-available hover:bg-booth-available/80">
+                {loading ? (
+                  <>
+                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
+                    Загрузка...
+                  </>
+                ) : (
+                  <>
+                    <Icon name="Download" size={16} className="mr-2" />
+                    Загрузить данные
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

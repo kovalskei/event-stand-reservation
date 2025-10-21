@@ -1,20 +1,35 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import Icon from '@/components/ui/icon';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import Papa from 'papaparse';
 
-type BoothStatus = 'available' | 'booked' | 'unavailable';
+interface Event {
+  id: string;
+  name: string;
+  date: string;
+  location: string;
+  mapUrl: string;
+}
 
 interface Booth {
   id: string;
-  status: BoothStatus;
+  status: 'available' | 'booked' | 'unavailable';
   company?: string;
   contact?: string;
-  price?: string;
   size?: string;
+  price?: string;
 }
 
 interface BoothPosition {
@@ -25,104 +40,71 @@ interface BoothPosition {
   height: number;
 }
 
-interface Event {
-  id: string;
-  name: string;
-  date: string;
-  location: string;
-  mapUrl: string;
-  sheetId: string;
-}
-
-const mockEvents: Event[] = [
+const events: Event[] = [
   {
-    id: '1',
-    name: 'Выставка 2025',
-    date: '15-20 марта 2025',
-    location: 'Павильон 1',
+    id: 'event-1',
+    name: 'Выставка технологий 2025',
+    date: '15-20 марта',
+    location: 'Павильон №1',
     mapUrl: 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
-    sheetId: '',
   },
-  {
-    id: '2',
-    name: 'Tech Forum 2025',
-    date: '5-10 апреля 2025',
-    location: 'Павильон 2',
-    mapUrl: 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
-    sheetId: '',
-  },
-];
-
-const initialBooths: Booth[] = [
-  { id: 'A1', status: 'available' },
-  { id: 'A2', status: 'booked', company: 'ТехноПром', contact: 'Иванов И.И.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A3', status: 'available' },
-  { id: 'A4', status: 'available' },
-  { id: 'A5', status: 'booked', company: 'ИнноВейт', contact: 'Петрова А.С.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A6', status: 'available' },
-  { id: 'A7', status: 'available' },
-  { id: 'A8', status: 'available' },
-  { id: 'A9', status: 'available' },
-  { id: 'A10', status: 'booked', company: 'МегаСтрой', contact: 'Сидоров П.П.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A11', status: 'available' },
-  { id: 'A12', status: 'available' },
-  { id: 'B1', status: 'available' },
-  { id: 'B2', status: 'available' },
-  { id: 'B3', status: 'booked', company: 'ЭкоЛайн', contact: 'Морозова Е.В.', price: '75 000 ₽', size: '4x4 м' },
 ];
 
 const defaultPositions: BoothPosition[] = [
-  { id: 'A1', x: 19, y: 18, width: 5, height: 10.5 },
-  { id: 'A2', x: 24.15, y: 18, width: 5, height: 10.5 },
-  { id: 'A3', x: 29.3, y: 18, width: 5, height: 10.5 },
-  { id: 'A4', x: 34.45, y: 18, width: 5, height: 10.5 },
-  { id: 'A5', x: 39.6, y: 18, width: 5, height: 10.5 },
-  { id: 'A6', x: 44.75, y: 18, width: 5, height: 10.5 },
-  { id: 'A7', x: 49.9, y: 18, width: 5, height: 10.5 },
-  { id: 'A8', x: 55.05, y: 18, width: 5, height: 10.5 },
-  { id: 'A9', x: 60.2, y: 18, width: 5, height: 10.5 },
-  { id: 'A10', x: 65.35, y: 18, width: 5, height: 10.5 },
-  { id: 'A11', x: 70.5, y: 18, width: 5, height: 10.5 },
-  { id: 'A12', x: 75.65, y: 18, width: 5, height: 10.5 },
-  { id: 'B1', x: 43, y: 50.5, width: 4.5, height: 10.5 },
-  { id: 'B2', x: 47.8, y: 50.5, width: 4.5, height: 10.5 },
-  { id: 'B3', x: 52.6, y: 50.5, width: 4.5, height: 10.5 },
+  { id: 'A1', x: 19.5, y: 7, width: 5.8, height: 18 },
+  { id: 'A2', x: 25.3, y: 7, width: 5.8, height: 18 },
+  { id: 'A3', x: 31.1, y: 7, width: 5.8, height: 18 },
+  { id: 'A4', x: 36.9, y: 7, width: 5.8, height: 18 },
+  { id: 'A5', x: 42.7, y: 7, width: 5.8, height: 18 },
+  { id: 'A6', x: 48.5, y: 7, width: 5.8, height: 18 },
+  { id: 'A7', x: 54.3, y: 7, width: 5.8, height: 18 },
+  { id: 'A8', x: 60.1, y: 7, width: 5.8, height: 18 },
+  { id: 'A9', x: 65.9, y: 7, width: 5.8, height: 18 },
+  { id: 'A10', x: 71.7, y: 7, width: 5.8, height: 18 },
+  { id: 'A11', x: 77.5, y: 7, width: 5.8, height: 18 },
+  { id: 'A12', x: 83.3, y: 7, width: 5.8, height: 18 },
+  { id: 'B1', x: 52.3, y: 32, width: 8.8, height: 15 },
+  { id: 'B2', x: 61.1, y: 32, width: 8.8, height: 15 },
+  { id: 'B3', x: 69.9, y: 32, width: 8.8, height: 15 },
 ];
 
 export default function Index() {
-  const [events] = useState<Event[]>(mockEvents);
-  const [selectedEvent, setSelectedEvent] = useState<Event>(mockEvents[0]);
-  const [booths, setBooths] = useState<Booth[]>(initialBooths);
+  const [selectedEvent, setSelectedEvent] = useState<Event>(events[0]);
+  const [booths, setBooths] = useState<Booth[]>(
+    defaultPositions.map(p => ({ id: p.id, status: 'available' }))
+  );
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
-  const [editMode, setEditMode] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [sheetUrl, setSheetUrl] = useState('');
   const [showSheetDialog, setShowSheetDialog] = useState(false);
-  const [autoSync, setAutoSync] = useState(false);
-  const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [positions, setPositions] = useState<BoothPosition[]>(() => {
-    const saved = localStorage.getItem(`booth-positions-${mockEvents[0].id}`);
-    return saved ? JSON.parse(saved) : defaultPositions;
-  });
+  const [sheetUrl, setSheetUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [positions, setPositions] = useState<BoothPosition[]>(defaultPositions);
   const [dragging, setDragging] = useState<string | null>(null);
-  const [resizing, setResizing] = useState<{ id: string; corner: 'se' | 'sw' | 'ne' | 'nw' } | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [resizing, setResizing] = useState<{ id: string; corner: string } | null>(null);
+  const [startPos, setStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [autoSync, setAutoSync] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>('');
+  const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mapRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
-  const SNAP_THRESHOLD = 1.5;
-
   useEffect(() => {
-    const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
-    if (saved) {
-      setPositions(JSON.parse(saved));
+    const savedPositions = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
+    if (savedPositions) {
+      setPositions(JSON.parse(savedPositions));
     } else {
       setPositions(defaultPositions);
     }
-  }, [selectedEvent.id]);
+  }, [selectedEvent]);
 
-  const getBoothColor = (status: BoothStatus) => {
+  const stats = {
+    total: booths.length,
+    available: booths.filter(b => b.status === 'available').length,
+    booked: booths.filter(b => b.status === 'booked').length,
+    unavailable: booths.filter(b => b.status === 'unavailable').length,
+  };
+
+  const getBoothColor = (status: string) => {
     switch (status) {
       case 'available':
         return 'bg-booth-available hover:bg-booth-available/80';
@@ -130,10 +112,12 @@ export default function Index() {
         return 'bg-booth-booked hover:bg-booth-booked/80';
       case 'unavailable':
         return 'bg-booth-unavailable hover:bg-booth-unavailable/80';
+      default:
+        return 'bg-gray-400';
     }
   };
 
-  const getStatusText = (status: BoothStatus) => {
+  const getStatusText = (status: string) => {
     switch (status) {
       case 'available':
         return 'Свободен';
@@ -141,189 +125,188 @@ export default function Index() {
         return 'Забронирован';
       case 'unavailable':
         return 'Недоступен';
+      default:
+        return status;
     }
-  };
-
-  const stats = {
-    total: booths.length,
-    available: booths.filter(b => b.status === 'available').length,
-    booked: booths.filter(b => b.status === 'booked').length,
-  };
-
-  const snapToNeighbors = (id: string, x: number, y: number, width: number, height: number) => {
-    let snappedX = x;
-    let snappedY = y;
-
-    positions.forEach(pos => {
-      if (pos.id === id) return;
-
-      const right = x + width;
-      const bottom = y + height;
-      const posRight = pos.x + pos.width;
-      const posBottom = pos.y + pos.height;
-
-      if (Math.abs(y - pos.y) < SNAP_THRESHOLD) snappedY = pos.y;
-      if (Math.abs(bottom - posBottom) < SNAP_THRESHOLD) snappedY = pos.y + pos.height - height;
-      
-      if (Math.abs(x - pos.x) < SNAP_THRESHOLD) snappedX = pos.x;
-      if (Math.abs(right - posRight) < SNAP_THRESHOLD) snappedX = pos.x + pos.width - width;
-
-      if (Math.abs(right - pos.x) < SNAP_THRESHOLD && Math.abs(y - pos.y) < 5) snappedX = pos.x - width;
-      if (Math.abs(x - posRight) < SNAP_THRESHOLD && Math.abs(y - pos.y) < 5) snappedX = posRight;
-      
-      if (Math.abs(bottom - pos.y) < SNAP_THRESHOLD && Math.abs(x - pos.x) < 5) snappedY = pos.y - height;
-      if (Math.abs(y - posBottom) < SNAP_THRESHOLD && Math.abs(x - pos.x) < 5) snappedY = posBottom;
-    });
-
-    return { x: snappedX, y: snappedY };
   };
 
   const handleMouseDown = (e: React.MouseEvent, boothId: string) => {
     if (!editMode) return;
-    e.preventDefault();
     e.stopPropagation();
-    
-    const container = containerRef.current;
-    if (!container) return;
-    
-    const rect = container.getBoundingClientRect();
-    const position = positions.find(p => p.id === boothId);
-    if (!position) return;
-    
-    const offsetX = (e.clientX - rect.left) / rect.width * 100 - position.x;
-    const offsetY = (e.clientY - rect.top) / rect.height * 100 - position.y;
-    
     setDragging(boothId);
-    setDragOffset({ x: offsetX, y: offsetY });
+    setStartPos({ x: e.clientX, y: e.clientY });
   };
 
-  const handleResizeMouseDown = (e: React.MouseEvent, boothId: string, corner: 'se' | 'sw' | 'ne' | 'nw') => {
-    if (!editMode) return;
-    e.preventDefault();
+  const handleResizeMouseDown = (e: React.MouseEvent, boothId: string, corner: string) => {
     e.stopPropagation();
-    
     setResizing({ id: boothId, corner });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!editMode) return;
-    
-    const container = containerRef.current;
-    if (!container) return;
-    
-    const rect = container.getBoundingClientRect();
-    const mouseX = (e.clientX - rect.left) / rect.width * 100;
-    const mouseY = (e.clientY - rect.top) / rect.height * 100;
-
-    if (dragging) {
-      const position = positions.find(p => p.id === dragging);
-      if (!position) return;
-
-      let x = Math.max(0, Math.min(100 - position.width, mouseX - dragOffset.x));
-      let y = Math.max(0, Math.min(100 - position.height, mouseY - dragOffset.y));
-
-      const snapped = snapToNeighbors(dragging, x, y, position.width, position.height);
-      x = snapped.x;
-      y = snapped.y;
-
-      setPositions(prev => prev.map(p => 
-        p.id === dragging ? { ...p, x, y } : p
-      ));
-    } else if (resizing) {
-      const position = positions.find(p => p.id === resizing.id);
-      if (!position) return;
-
-      const newPos = { ...position };
-
-      switch (resizing.corner) {
-        case 'se':
-          newPos.width = Math.max(2, mouseX - position.x);
-          newPos.height = Math.max(2, mouseY - position.y);
-          break;
-        case 'sw':
-          const newWidth = Math.max(2, position.x + position.width - mouseX);
-          newPos.x = position.x + position.width - newWidth;
-          newPos.width = newWidth;
-          newPos.height = Math.max(2, mouseY - position.y);
-          break;
-        case 'ne':
-          newPos.width = Math.max(2, mouseX - position.x);
-          const newHeight = Math.max(2, position.y + position.height - mouseY);
-          newPos.y = position.y + position.height - newHeight;
-          newPos.height = newHeight;
-          break;
-        case 'nw':
-          const newW = Math.max(2, position.x + position.width - mouseX);
-          const newH = Math.max(2, position.y + position.height - mouseY);
-          newPos.x = position.x + position.width - newW;
-          newPos.y = position.y + position.height - newH;
-          newPos.width = newW;
-          newPos.height = newH;
-          break;
-      }
-
-      newPos.x = Math.max(0, Math.min(100 - newPos.width, newPos.x));
-      newPos.y = Math.max(0, Math.min(100 - newPos.height, newPos.y));
-
-      setPositions(prev => prev.map(p => 
-        p.id === resizing.id ? newPos : p
-      ));
-    }
-  };
-
-  const handleMouseUp = () => {
-    setDragging(null);
-    setResizing(null);
+    setStartPos({ x: e.clientX, y: e.clientY });
   };
 
   useEffect(() => {
-    if (dragging) {
-      window.addEventListener('mouseup', handleMouseUp as any);
-      return () => window.removeEventListener('mouseup', handleMouseUp as any);
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!mapRef.current || !startPos) return;
+
+      const mapRect = mapRef.current.getBoundingClientRect();
+      const deltaX = ((e.clientX - startPos.x) / mapRect.width) * 100;
+      const deltaY = ((e.clientY - startPos.y) / mapRect.height) * 100;
+
+      if (dragging) {
+        setPositions(prev => prev.map(p => 
+          p.id === dragging 
+            ? { ...p, x: Math.max(0, Math.min(95, p.x + deltaX)), y: Math.max(0, Math.min(95, p.y + deltaY)) }
+            : p
+        ));
+        setStartPos({ x: e.clientX, y: e.clientY });
+      }
+
+      if (resizing) {
+        setPositions(prev => prev.map(p => {
+          if (p.id !== resizing.id) return p;
+          
+          let newWidth = p.width;
+          let newHeight = p.height;
+          let newX = p.x;
+          let newY = p.y;
+
+          if (resizing.corner.includes('e')) {
+            newWidth = Math.max(3, p.width + deltaX);
+          }
+          if (resizing.corner.includes('w')) {
+            newWidth = Math.max(3, p.width - deltaX);
+            newX = p.x + deltaX;
+          }
+          if (resizing.corner.includes('s')) {
+            newHeight = Math.max(3, p.height + deltaY);
+          }
+          if (resizing.corner.includes('n')) {
+            newHeight = Math.max(3, p.height - deltaY);
+            newY = p.y + deltaY;
+          }
+
+          return { ...p, width: newWidth, height: newHeight, x: newX, y: newY };
+        }));
+        setStartPos({ x: e.clientX, y: e.clientY });
+      }
+    };
+
+    const handleMouseUp = () => {
+      setDragging(null);
+      setResizing(null);
+      setStartPos(null);
+    };
+
+    if (dragging || resizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
     }
-  }, [dragging]);
+  }, [dragging, resizing, startPos]);
+
+  const exportToPDF = async () => {
+    if (!mapRef.current) return;
+
+    toast({
+      title: 'Генерация PDF',
+      description: 'Подождите, создается документ...',
+    });
+
+    try {
+      const canvas = await html2canvas(mapRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'mm',
+      });
+
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`${selectedEvent.name}-${selectedEvent.date}.pdf`);
+
+      toast({
+        title: 'PDF создан',
+        description: 'План мероприятия успешно экспортирован',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось создать PDF',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const loadSheetData = async (silent = false) => {
     if (!sheetUrl.trim()) {
-      if (!silent) {
-        toast({
-          title: 'Ошибка',
-          description: 'Введите URL Google Таблицы',
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Ошибка',
+        description: 'Укажите URL Google Таблицы',
+        variant: 'destructive',
+      });
       return;
     }
 
     if (!silent) setLoading(true);
+
     try {
-      const response = await fetch('https://functions.poehali.dev/0a047b83-702c-4547-ae04-ff2dd383ee27', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheetUrl }),
+      const sheetId = sheetUrl.match(/\/d\/([a-zA-Z0-9-_]+)/)?.[1];
+      if (!sheetId) {
+        throw new Error('Неверный формат URL');
+      }
+
+      const csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv`;
+      const response = await fetch(csvUrl);
+      const csvText = await response.text();
+
+      Papa.parse(csvText, {
+        complete: (results) => {
+          const data = results.data as string[][];
+          const updatedBooths: Booth[] = [];
+
+          data.slice(1).forEach((row) => {
+            if (row[0]) {
+              updatedBooths.push({
+                id: row[0].trim(),
+                status: (row[1]?.trim() as 'available' | 'booked' | 'unavailable') || 'available',
+                company: row[2]?.trim() || undefined,
+                contact: row[3]?.trim() || undefined,
+                size: row[4]?.trim() || undefined,
+                price: row[5]?.trim() || undefined,
+              });
+            }
+          });
+
+          setBooths(updatedBooths);
+          const now = new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+          setLastSyncTime(now);
+          
+          if (!silent) {
+            toast({
+              title: 'Данные загружены',
+              description: `Обновлено ${updatedBooths.length} стендов`,
+            });
+            setShowSheetDialog(false);
+          }
+        },
+        error: () => {
+          throw new Error('Ошибка парсинга данных');
+        },
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка загрузки данных');
-      }
-
-      const data = await response.json();
-      setBooths(data.booths);
-      setShowSheetDialog(false);
-      setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
-      
-      if (!silent) {
-        toast({
-          title: 'Данные загружены',
-          description: `Синхронизировано ${data.booths.length} стендов`,
-        });
-      }
     } catch (error) {
       if (!silent) {
         toast({
-          title: 'Ошибка',
-          description: error instanceof Error ? error.message : 'Не удалось загрузить данные из таблицы',
+          title: 'Ошибка загрузки',
+          description: error instanceof Error ? error.message : 'Проверьте URL и доступ к таблице',
           variant: 'destructive',
         });
       }
@@ -431,7 +414,7 @@ export default function Index() {
           <Card className="p-6 animate-scale-in bg-white border-2 border-booth-booked/20" style={{ animationDelay: '0.2s' }}>
             <div className="flex items-center gap-3">
               <div className="p-3 bg-booth-booked/10 rounded-lg">
-                <Icon name="Lock" size={24} className="text-booth-booked" />
+                <Icon name="XCircle" size={24} className="text-booth-booked" />
               </div>
               <div>
                 <p className="text-sm text-gray-600 font-medium">Забронировано</p>
@@ -440,82 +423,54 @@ export default function Index() {
             </div>
           </Card>
 
-          <Card className="p-6 animate-scale-in bg-white border-2 border-gray-200" style={{ animationDelay: '0.3s' }}>
+          <Card className="p-6 animate-scale-in bg-white border-2 border-booth-unavailable/20" style={{ animationDelay: '0.3s' }}>
             <div className="flex items-center gap-3">
-              <div className="p-3 bg-gray-100 rounded-lg">
-                <Icon name="Percent" size={24} className="text-gray-600" />
+              <div className="p-3 bg-booth-unavailable/10 rounded-lg">
+                <Icon name="Ban" size={24} className="text-booth-unavailable" />
               </div>
               <div>
-                <p className="text-sm text-gray-600 font-medium">Заполненность</p>
-                <p className="text-3xl font-bold text-gray-900">{Math.round((stats.booked / stats.total) * 100)}%</p>
+                <p className="text-sm text-gray-600 font-medium">Недоступно</p>
+                <p className="text-3xl font-bold text-gray-900">{stats.unavailable}</p>
               </div>
             </div>
           </Card>
         </div>
 
-        <Card className="p-8 bg-white shadow-xl animate-fade-in">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Интерактивная карта павильона</h2>
-            <div className="flex gap-4 items-center">
-              {!editMode && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-booth-available"></div>
-                    <span className="text-sm text-gray-600">Свободен</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-booth-booked"></div>
-                    <span className="text-sm text-gray-600">Забронирован</span>
-                  </div>
-                </>
-              )}
+        <Card className="p-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Icon name="Map" size={24} className="text-primary" />
+              <h2 className="text-2xl font-bold text-gray-900">План павильона</h2>
+            </div>
+            <div className="flex gap-2">
               {editMode ? (
-                <div className="flex gap-2">
-                  <Button onClick={savePositions} size="sm" className="bg-booth-available hover:bg-booth-available/80">
-                    <Icon name="Save" size={16} className="mr-2" />
-                    Сохранить
-                  </Button>
+                <>
                   <Button onClick={resetPositions} variant="outline" size="sm">
                     <Icon name="RotateCcw" size={16} className="mr-2" />
                     Сбросить
                   </Button>
-                  <Button onClick={() => setEditMode(false)} variant="outline" size="sm">
-                    Отменить
+                  <Button onClick={savePositions} size="sm">
+                    <Icon name="Save" size={16} className="mr-2" />
+                    Сохранить
                   </Button>
-                </div>
+                </>
               ) : (
-                <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
-                  <Icon name="Edit" size={16} className="mr-2" />
-                  Настроить разметку
-                </Button>
+                <>
+                  <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
+                    <Icon name="Edit" size={16} className="mr-2" />
+                    Редактировать разметку
+                  </Button>
+                  <Button onClick={exportToPDF} variant="outline" size="sm">
+                    <Icon name="Download" size={16} className="mr-2" />
+                    Скачать PDF
+                  </Button>
+                </>
               )}
             </div>
           </div>
 
-          {editMode && (
-            <div className="mb-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
-              <div className="flex items-start gap-3">
-                <Icon name="Info" size={20} className="text-primary mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Режим редактирования</p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    • Перетаскивайте стенды для позиционирования (автоматическое прилипание)<br/>
-                    • Тяните за углы для изменения размера стенда<br/>
-                    • Нажмите "Сохранить" для применения изменений
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-auto">
-            <div 
-              ref={containerRef}
-              className="relative min-w-[1200px] w-full select-none" 
-              style={{ aspectRatio: '1920/850' }}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-            >
+          <div className="bg-white rounded-lg border-2 border-gray-200 overflow-hidden">
+            <div ref={mapRef} className="relative w-full aspect-[2/1] bg-white">
               <img 
                 src={selectedEvent.mapUrl} 
                 alt="План павильона" 
@@ -621,7 +576,7 @@ export default function Index() {
               </div>
             )}
 
-            {selectedBooth?.status === 'booked' && (
+            {selectedBooth?.company && (
               <>
                 <div className="p-4 bg-slate-50 rounded-lg space-y-2">
                   <div className="flex items-center gap-2 text-gray-600">
@@ -631,13 +586,15 @@ export default function Index() {
                   <p className="text-gray-900 font-semibold pl-6">{selectedBooth.company}</p>
                 </div>
 
-                <div className="p-4 bg-slate-50 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Icon name="User" size={18} />
-                    <span className="text-sm font-medium">Контактное лицо</span>
+                {selectedBooth.contact && (
+                  <div className="p-4 bg-slate-50 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2 text-gray-600">
+                      <Icon name="Phone" size={18} />
+                      <span className="text-sm font-medium">Контакт</span>
+                    </div>
+                    <p className="text-gray-900 font-semibold pl-6">{selectedBooth.contact}</p>
                   </div>
-                  <p className="text-gray-900 font-semibold pl-6">{selectedBooth.contact}</p>
-                </div>
+                )}
               </>
             )}
 

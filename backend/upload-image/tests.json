@@ -8,8 +8,7 @@
       },
       "expectedStatus": 200,
       "expectedBody": {
-        "url": "string",
-        "filename": "string"
+        "url": "string"
       },
       "bodyMatcher": "partial"
     },

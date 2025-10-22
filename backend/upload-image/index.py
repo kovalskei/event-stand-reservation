@@ -1,16 +1,16 @@
 '''
-Business: Upload image file and store it in the project
+Business: Upload image to ImgBB hosting and return permanent URL
 Args: event - dict with httpMethod, body containing base64 image
       context - object with request_id attribute
-Returns: HTTP response with uploaded image URL
+Returns: HTTP response with ImgBB hosted image URL
 '''
 
 import json
 import base64
 import os
 from typing import Dict, Any
-from datetime import datetime
-import hashlib
+import urllib.request
+import urllib.parse
 
 
 def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
@@ -66,38 +66,53 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 }
             image_data = parts[1]
         
-        # Decode base64
-        try:
-            image_bytes = base64.b64decode(image_data)
-        except Exception:
+        # Get ImgBB API key from environment
+        api_key = os.environ.get('IMGBB_API_KEY')
+        if not api_key:
             return {
-                'statusCode': 400,
+                'statusCode': 500,
                 'headers': {
                     'Content-Type': 'application/json',
                     'Access-Control-Allow-Origin': '*'
                 },
-                'body': json.dumps({'error': 'Invalid base64 data'})
+                'body': json.dumps({'error': 'ImgBB API key not configured'})
             }
         
-        # Return data URL - will be stored temporarily in frontend only
-        # Maps should be uploaded to external CDN before using this
-        filename = f"map_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        # Upload to ImgBB
+        url = 'https://api.imgbb.com/1/upload'
+        data = urllib.parse.urlencode({
+            'key': api_key,
+            'image': image_data
+        }).encode('utf-8')
         
-        # Just return the data URL as-is
-        # Frontend should handle uploading to proper CDN
-        return {
-            'statusCode': 200,
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            },
-            'isBase64Encoded': False,
-            'body': json.dumps({
-                'url': f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}",
-                'filename': filename,
-                'warning': 'This is a data URL, upload to CDN before saving to database'
-            })
-        }
+        req = urllib.request.Request(url, data=data)
+        with urllib.request.urlopen(req) as response:
+            result = json.loads(response.read().decode('utf-8'))
+        
+        if result.get('success'):
+            image_url = result['data']['url']
+            return {
+                'statusCode': 200,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'isBase64Encoded': False,
+                'body': json.dumps({
+                    'url': image_url,
+                    'delete_url': result['data'].get('delete_url'),
+                    'thumb_url': result['data'].get('thumb', {}).get('url')
+                })
+            }
+        else:
+            return {
+                'statusCode': 500,
+                'headers': {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                },
+                'body': json.dumps({'error': 'Failed to upload to ImgBB'})
+            }
         
     except json.JSONDecodeError:
         return {

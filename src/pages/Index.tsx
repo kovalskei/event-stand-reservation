@@ -803,15 +803,10 @@ export default function Index() {
       return;
     }
 
-    const timestamp = Date.now();
-    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const fileName = `map_${timestamp}_${safeFileName}`;
-    const imageUrl = `/images/${fileName}`;
-
     setLoading(true);
     toast({
       title: 'Загрузка изображения',
-      description: 'Сохраняем в /public/images...',
+      description: 'Загружаем на ImgBB...',
     });
 
     try {
@@ -821,20 +816,24 @@ export default function Index() {
         const dataUrl = reader.result as string;
         
         try {
-          const response = await fetch('/api/save-image', {
+          const uploadUrl = api.getFunctionUrl('upload-image');
+          const response = await fetch(uploadUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ 
-              fileName, 
-              dataUrl 
+              image: dataUrl 
             }),
           });
 
           if (!response.ok) {
-            throw new Error('Не удалось сохранить изображение');
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Не удалось загрузить изображение');
           }
+
+          const data = await response.json();
+          const imageUrl = data.url;
 
           setSelectedEvent(prev => ({
             ...prev,
@@ -850,7 +849,7 @@ export default function Index() {
 
           toast({
             title: 'Изображение загружено',
-            description: 'Файл сохранён в /public/images. Нажмите "Сохранить карту" чтобы применить изменения',
+            description: 'Файл загружен на ImgBB. Нажмите "Сохранить карту" чтобы применить изменения',
           });
           
           setLoading(false);

@@ -701,9 +701,19 @@ export default function Index() {
     });
 
     try {
-      const fontResponse = await fetch('https://cdn.jsdelivr.net/npm/roboto-fontface@0.10.0/fonts/roboto/Roboto-Regular.ttf');
-      const fontBlob = await fontResponse.arrayBuffer();
-      const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontBlob)));
+      const headerDiv = document.createElement('div');
+      headerDiv.style.cssText = 'position: absolute; left: -9999px; width: 800px; padding: 20px; font-family: Arial, sans-serif; background: white;';
+      headerDiv.innerHTML = `
+        <h1 style="font-size: 32px; margin: 0 0 10px 0; text-align: center; font-weight: bold;">${selectedEvent.name}</h1>
+        <p style="font-size: 18px; margin: 0; text-align: center; color: #666;">${selectedEvent.date} • ${selectedEvent.location}</p>
+      `;
+      document.body.appendChild(headerDiv);
+      
+      const headerCanvas = await html2canvas(headerDiv, {
+        scale: 2,
+        backgroundColor: '#ffffff',
+      });
+      document.body.removeChild(headerDiv);
 
       const clone = mapElement.cloneNode(true) as HTMLElement;
       clone.style.transform = 'none';
@@ -714,7 +724,7 @@ export default function Index() {
       clone.style.height = '1200px';
       document.body.appendChild(clone);
       
-      const canvas = await html2canvas(clone, {
+      const mapCanvas = await html2canvas(clone, {
         scale: 1,
         backgroundColor: '#ffffff',
         logging: false,
@@ -728,22 +738,18 @@ export default function Index() {
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      pdf.addFileToVFS('Roboto-Regular.ttf', fontBase64);
-      pdf.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
-      pdf.setFont('Roboto');
+      const headerImgData = headerCanvas.toDataURL('image/png');
+      const headerWidth = 190;
+      const headerHeight = (headerCanvas.height * headerWidth) / headerCanvas.width;
+      pdf.addImage(headerImgData, 'PNG', 10, 10, headerWidth, headerHeight);
       
-      pdf.setFontSize(20);
-      pdf.text(selectedEvent.name, 105, 15, { align: 'center' });
+      const mapImgData = mapCanvas.toDataURL('image/jpeg', 0.7);
+      const mapWidth = 190;
+      const mapHeight = (mapCanvas.height * mapWidth) / mapCanvas.width;
+      const mapYPosition = 10 + headerHeight + 5;
+      pdf.addImage(mapImgData, 'JPEG', 10, mapYPosition, mapWidth, mapHeight);
       
-      pdf.setFontSize(12);
-      pdf.text(`${selectedEvent.date} • ${selectedEvent.location}`, 105, 23, { align: 'center' });
-      
-      const imgData = canvas.toDataURL('image/jpeg', 0.7);
-      const imgWidth = 190;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      pdf.addImage(imgData, 'JPEG', 10, 30, imgWidth, imgHeight);
-      
-      let yPosition = 30 + imgHeight + 10;
+      let yPosition = mapYPosition + mapHeight + 10;
       
       const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
       
@@ -753,19 +759,30 @@ export default function Index() {
           yPosition = 15;
         }
         
-        pdf.setFontSize(14);
-        pdf.text('Забронированные стенды:', 10, yPosition);
-        yPosition += 8;
+        const listDiv = document.createElement('div');
+        listDiv.style.cssText = 'position: absolute; left: -9999px; width: 800px; padding: 10px; font-family: Arial, sans-serif; background: white;';
+        listDiv.innerHTML = `
+          <h2 style="font-size: 20px; margin: 0 0 10px 0; font-weight: bold;">Забронированные стенды:</h2>
+          ${bookedBooths.map(booth => `<p style="font-size: 16px; margin: 5px 0;">${booth.id} - ${booth.company}</p>`).join('')}
+        `;
+        document.body.appendChild(listDiv);
         
-        pdf.setFontSize(11);
-        bookedBooths.forEach((booth) => {
-          if (yPosition > 280) {
-            pdf.addPage();
-            yPosition = 15;
-          }
-          pdf.text(`${booth.id} - ${booth.company}`, 10, yPosition);
-          yPosition += 6;
+        const listCanvas = await html2canvas(listDiv, {
+          scale: 2,
+          backgroundColor: '#ffffff',
         });
+        document.body.removeChild(listDiv);
+        
+        const listImgData = listCanvas.toDataURL('image/png');
+        const listWidth = 190;
+        const listHeight = (listCanvas.height * listWidth) / listCanvas.width;
+        
+        if (yPosition + listHeight > 280) {
+          pdf.addPage();
+          yPosition = 15;
+        }
+        
+        pdf.addImage(listImgData, 'PNG', 10, yPosition, listWidth, listHeight);
       }
       
       pdf.save(`${selectedEvent.name}_карта_стендов.pdf`);

@@ -176,6 +176,11 @@ export default function Index() {
       
       const eventId = Number(mappedEvents[0].id);
       const data = await api.getBooths(eventId);
+      
+      if (data.sheet_url) {
+        setSheetUrl(data.sheet_url);
+      }
+      
       if (data.booths && data.booths.length > 0) {
         const boothPositions = data.booths.map(b => ({
           id: b.id,

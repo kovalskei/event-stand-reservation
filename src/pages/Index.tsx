@@ -1549,15 +1549,11 @@ export default function Index() {
                         <div
                           onClick={(e) => {
                             e.stopPropagation();
-                            setPositions(prev => prev.filter(p => p.id !== booth.id));
-                            toast({
-                              title: 'Стенд удален с карты',
-                              description: `Стенд ${booth.id} удален из разметки`,
-                            });
+                            handleDeleteBooth(booth.id);
                           }}
                           className="absolute bottom-0 left-1/2 w-5 h-5 bg-red-500 rounded-full cursor-pointer border-2 border-white shadow-lg hover:scale-125 transition-transform flex items-center justify-center"
                           style={{ transform: 'translate(-50%, 150%)' }}
-                          title="Удалить с карты"
+                          title="Удалить стенд"
                         >
                           <Icon name="Trash2" size={10} className="text-white" />
                         </div>

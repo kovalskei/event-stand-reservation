@@ -60,9 +60,16 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       const mapContainer = document.createElement('div');
       mapContainer.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 2400px; height: 1200px; background: white;';
       
-      const mapImg = document.createElement('img');
-      mapImg.src = selectedEvent.mapUrl;
+      const mapImg = new Image();
+      mapImg.crossOrigin = 'anonymous';
       mapImg.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+      
+      await new Promise<void>((resolve, reject) => {
+        mapImg.onload = () => resolve();
+        mapImg.onerror = () => reject(new Error('Failed to load map image'));
+        mapImg.src = selectedEvent.mapUrl;
+      });
+      
       mapContainer.appendChild(mapImg);
       
       positions.forEach(pos => {
@@ -93,7 +100,7 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       
       document.body.appendChild(mapContainer);
       
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 200));
       
       const mapCanvas = await html2canvas(mapContainer, {
         scale: 1,

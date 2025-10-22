@@ -303,13 +303,41 @@ export default function Index() {
     }
   };
 
-  const handleDeleteBooth = (boothId: string) => {
+  const handleDeleteBooth = async (boothId: string) => {
     setBooths(prev => prev.filter(b => b.id !== boothId));
     setPositions(prev => prev.filter(p => p.id !== boothId));
+    
     toast({
       title: 'Стенд удалён',
       description: `Стенд ${boothId} удалён из списка`,
     });
+
+    // Сохраняем изменения в базу данных
+    try {
+      const updatedBooths = booths.filter(b => b.id !== boothId);
+      const updatedPositions = positions.filter(p => p.id !== boothId);
+      
+      const boothsData = updatedPositions.map(pos => {
+        const booth = updatedBooths.find(b => b.id === pos.id);
+        return {
+          id: pos.id,
+          x: pos.x,
+          y: pos.y,
+          width: pos.width,
+          height: pos.height,
+          rotation: pos.rotation || 0,
+          status: booth?.status || 'available',
+          company: booth?.company || '',
+          contact: booth?.contact || '',
+          price: booth?.price || '',
+          size: booth?.size || ''
+        };
+      });
+
+      await api.saveBooths(parseInt(selectedEvent.id), boothsData);
+    } catch (error) {
+      console.error('Failed to save deletion:', error);
+    }
   };
 
   const stats = {

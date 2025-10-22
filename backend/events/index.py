@@ -214,15 +214,16 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 
                 for booth in booths:
                     cur.execute(
-                        """INSERT INTO booths (id, event_id, x, y, width, height, status, company, contact_person, phone, email, notes)
-                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        """INSERT INTO booths (id, event_id, x, y, width, height, rotation, status, company, contact_person, phone, email, notes)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                            ON CONFLICT (id, event_id) DO UPDATE SET
                            x = EXCLUDED.x, y = EXCLUDED.y, width = EXCLUDED.width, height = EXCLUDED.height,
+                           rotation = EXCLUDED.rotation,
                            status = EXCLUDED.status, company = EXCLUDED.company, contact_person = EXCLUDED.contact_person,
                            phone = EXCLUDED.phone, email = EXCLUDED.email, notes = EXCLUDED.notes,
                            updated_at = CURRENT_TIMESTAMP""",
                         (booth.get('id'), event_id, booth.get('x'), booth.get('y'), booth.get('width'),
-                         booth.get('height'), booth.get('status'), booth.get('company'), booth.get('contactPerson'),
+                         booth.get('height'), booth.get('rotation', 0), booth.get('status'), booth.get('company'), booth.get('contactPerson'),
                          booth.get('phone'), booth.get('email'), booth.get('notes'))
                     )
                 conn.commit()

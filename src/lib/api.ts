@@ -9,6 +9,7 @@ export interface Event {
   created_at: string;
   updated_at: string;
   map_url?: string;
+  sheet_url?: string;
 }
 
 export interface Booth {
@@ -18,6 +19,7 @@ export interface Booth {
   y: number;
   width: number;
   height: number;
+  rotation?: number;
   status: string;
   company?: string;
   contact_person?: string;
@@ -89,6 +91,7 @@ export const api = {
           y: b.y,
           width: b.width,
           height: b.height,
+          rotation: b.rotation || 0,
           status: b.status,
           company: b.company,
           contactPerson: b.contactPerson,

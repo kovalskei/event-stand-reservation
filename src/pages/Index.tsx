@@ -163,15 +163,15 @@ export default function Index() {
         setSelectedEvent(mappedEvents[0]);
         
         const eventId = Number(mappedEvents[0].id);
-        const savedBooths = await api.getBooths(eventId);
-        if (savedBooths && savedBooths.length > 0) {
-          const boothPositions = savedBooths.map(b => ({
+        const data = await api.getBooths(eventId);
+        if (data.booths && data.booths.length > 0) {
+          const boothPositions = data.booths.map(b => ({
             id: b.id,
             x: b.x,
             y: b.y,
             width: b.width,
             height: b.height,
-            rotation: 0
+            rotation: b.rotation || 0
           }));
           setPositions(boothPositions);
         }
@@ -200,26 +200,54 @@ export default function Index() {
   useEffect(() => {
     if (!userEmail) return;
     
-    const eventData = userStorage.getEventData(userEmail, selectedEvent.id);
+    const loadEventDataFromDB = async () => {
+      try {
+        const data = await api.getBooths(Number(selectedEvent.id));
+        
+        if (data.booths && data.booths.length > 0) {
+          const boothPositions = data.booths.map(b => ({
+            id: b.id,
+            x: b.x,
+            y: b.y,
+            width: b.width,
+            height: b.height,
+            rotation: b.rotation || 0
+          }));
+          setPositions(boothPositions);
+          userStorage.saveBoothPositions(userEmail, selectedEvent.id, boothPositions);
+        } else {
+          const localData = userStorage.getEventData(userEmail, selectedEvent.id);
+          if (localData?.boothPositions && localData.boothPositions.length > 0) {
+            setPositions(localData.boothPositions);
+          } else {
+            setPositions(defaultPositions);
+          }
+        }
+        
+        if (data.sheet_url) {
+          setSheetUrl(data.sheet_url);
+          userStorage.saveSheetUrl(userEmail, selectedEvent.id, data.sheet_url);
+        } else {
+          const localData = userStorage.getEventData(userEmail, selectedEvent.id);
+          if (localData?.sheetUrl) {
+            setSheetUrl(localData.sheetUrl);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load from DB, using localStorage:', error);
+        const localData = userStorage.getEventData(userEmail, selectedEvent.id);
+        if (localData) {
+          if (localData.boothPositions?.length > 0) {
+            setPositions(localData.boothPositions);
+          }
+          if (localData.sheetUrl) {
+            setSheetUrl(localData.sheetUrl);
+          }
+        }
+      }
+    };
     
-    if (eventData) {
-      if (eventData.boothPositions && eventData.boothPositions.length > 0) {
-        setPositions(eventData.boothPositions);
-      } else {
-        setPositions(defaultPositions);
-      }
-      
-      if (eventData.sheetUrl) {
-        setSheetUrl(eventData.sheetUrl);
-      }
-      
-      if (eventData.mapUrl && eventData.mapUrl !== selectedEvent.mapUrl) {
-        setSelectedEvent(prev => ({ ...prev, mapUrl: eventData.mapUrl }));
-      }
-    } else {
-      setPositions(defaultPositions);
-      setSheetUrl('');
-    }
+    loadEventDataFromDB();
   }, [selectedEvent.id, userEmail]);
 
   const getBoothColor = (status: BoothStatus) => {

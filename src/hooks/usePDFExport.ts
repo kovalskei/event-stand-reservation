@@ -87,10 +87,28 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       const mapX = (pageWidth - mapWidth) / 2;
       const mapY = 30;
       
-      console.log('=== PDF Export Debug ===');
-      console.log('Image actual size:', mapImg.width, 'x', mapImg.height);
-      console.log('Image aspect:', mapImg.width / mapImg.height);
-      console.log('Container aspect (web):', 1920 / 850);
+      const WEB_CONTAINER_ASPECT = 1920 / 850;
+      const imageAspect = mapImg.width / mapImg.height;
+      
+      const containerWidth = 1920;
+      const containerHeight = 850;
+      let imageOffsetX = 0;
+      let imageOffsetY = 0;
+      let imageRenderWidth: number;
+      let imageRenderHeight: number;
+      
+      if (imageAspect > WEB_CONTAINER_ASPECT) {
+        imageRenderWidth = containerWidth;
+        imageRenderHeight = containerWidth / imageAspect;
+        imageOffsetY = (containerHeight - imageRenderHeight) / 2;
+      } else {
+        imageRenderHeight = containerHeight;
+        imageRenderWidth = containerHeight * imageAspect;
+        imageOffsetX = (containerWidth - imageRenderWidth) / 2;
+      }
+      
+      const scaleX = mapImg.width / imageRenderWidth;
+      const scaleY = mapImg.height / imageRenderHeight;
       
       const canvas = document.createElement('canvas');
       canvas.width = mapImg.width;
@@ -103,12 +121,32 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
         const booth = booths.find(b => b.id === pos.id);
         if (!booth) return;
         
-        const x = (pos.x / 100) * mapImg.width;
-        const y = (pos.y / 100) * mapImg.height;
-        const w = (pos.width / 100) * mapImg.width;
-        const h = (pos.height / 100) * mapImg.height;
+        const webXPercent = pos.x / 100;
+        const webYPercent = pos.y / 100;
+        const webWPercent = pos.width / 100;
+        const webHPercent = pos.height / 100;
         
-        console.log(`Booth ${booth.id}: pos=${pos.x},${pos.y} size=${pos.width}x${pos.height}% → canvas=${Math.round(x)},${Math.round(y)} size=${Math.round(w)}x${Math.round(h)}px`);
+        const webX = webXPercent * containerWidth;
+        const webY = webYPercent * containerHeight;
+        const webW = webWPercent * containerWidth;
+        const webH = webHPercent * containerHeight;
+        
+        const imageX = webX - imageOffsetX;
+        const imageY = webY - imageOffsetY;
+        
+        const x = imageX * scaleX;
+        const y = imageY * scaleY;
+        const w = webW * scaleX;
+        const h = webH * scaleY;
+        
+        const centerX = x + w / 2;
+        const centerY = y + h / 2;
+        const rotation = pos.rotation || 0;
+        
+        ctx.save();
+        ctx.translate(centerX, centerY);
+        ctx.rotate((rotation * Math.PI) / 180);
+        ctx.translate(-centerX, -centerY);
         
         if (booth.status === 'booked') {
           ctx.fillStyle = 'rgba(22, 163, 74, 0.3)';
@@ -129,7 +167,9 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
         ctx.font = `bold ${fontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(booth.id, x + w / 2, y + h / 2);
+        ctx.fillText(booth.id, centerX, centerY);
+        
+        ctx.restore();
       });
       
       const compositeImgData = canvas.toDataURL('image/jpeg', 0.85);

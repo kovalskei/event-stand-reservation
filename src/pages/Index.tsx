@@ -97,7 +97,7 @@ const defaultPositions: BoothPosition[] = [
 export default function Index() {
   const { userEmail, logout } = useAuth();
   const [showLoginDialog, setShowLoginDialog] = useState(!userEmail);
-  const [events] = useState<Event[]>(mockEvents);
+  const [events, setEvents] = useState<Event[]>(mockEvents);
   const [selectedEvent, setSelectedEvent] = useState<Event>(mockEvents[0]);
   const [booths, setBooths] = useState<Booth[]>(initialBooths);
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
@@ -147,8 +147,32 @@ export default function Index() {
   useEffect(() => {
     if (!userEmail) {
       setShowLoginDialog(true);
+    } else {
+      loadEventsFromBackend();
     }
   }, [userEmail]);
+
+  const loadEventsFromBackend = async () => {
+    if (!userEmail) return;
+    
+    try {
+      const backendEvents = await api.getEvents(userEmail);
+      if (backendEvents.length > 0) {
+        const mappedEvents = backendEvents.map(e => ({
+          id: String(e.id),
+          name: e.name,
+          date: e.date || '',
+          location: e.location || '',
+          mapUrl: e.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+          sheetId: '',
+        }));
+        setEvents(mappedEvents);
+        setSelectedEvent(mappedEvents[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load events:', error);
+    }
+  };
 
   useEffect(() => {
     const handleMouseUp = () => {
@@ -556,13 +580,37 @@ export default function Index() {
     saveToDatabase();
   };
 
-  const saveMapUrl = () => {
-    localStorage.setItem(`map-url-${selectedEvent.id}`, selectedEvent.mapUrl);
-    setMapChanged(false);
-    toast({
-      title: 'Карта сохранена',
-      description: 'URL карты сохранён в localStorage',
-    });
+  const saveMapUrl = async () => {
+    try {
+      const response = await fetch('https://functions.poehali.dev/c9b46bff-046e-40ca-b12e-632b8ad7462f', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          action: 'update_map',
+          event_id: selectedEvent.id,
+          map_url: selectedEvent.mapUrl,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Не удалось сохранить карту');
+      }
+
+      localStorage.setItem(`map-url-${selectedEvent.id}`, selectedEvent.mapUrl);
+      setMapChanged(false);
+      toast({
+        title: 'Карта сохранена',
+        description: 'Карта сохранена в базу данных и доступна всем пользователям',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка',
+        description: error instanceof Error ? error.message : 'Не удалось сохранить карту',
+        variant: 'destructive',
+      });
+    }
   };
 
   const autoDetectBooths = async () => {
@@ -687,31 +735,58 @@ export default function Index() {
     setLoading(true);
     toast({
       title: 'Загрузка изображения',
-      description: 'Изображение сохраняется в проект...',
+      description: 'Изображение сохраняется на сервер...',
     });
 
     try {
       const reader = new FileReader();
       
-      reader.onload = () => {
+      reader.onload = async () => {
         const dataUrl = reader.result as string;
         
-        setSelectedEvent(prev => ({
-          ...prev,
-          mapUrl: dataUrl
-        }));
+        try {
+          const uploadResponse = await fetch('https://functions.poehali.dev/dda5eec5-ce80-45f7-b5b4-bc8a3896d9c9', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ image: dataUrl }),
+          });
 
-        setMapChanged(true);
-        setShowMapUploadDialog(false);
+          if (!uploadResponse.ok) {
+            throw new Error('Не удалось загрузить изображение на сервер');
+          }
 
-        toast({
-          title: 'Изображение загружено',
-          description: 'Нажмите "Сохранить карту" чтобы применить изменения',
-        });
-        
-        setLoading(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+          const uploadData = await uploadResponse.json();
+          const imageUrl = uploadData.url;
+
+          setSelectedEvent(prev => ({
+            ...prev,
+            mapUrl: imageUrl
+          }));
+
+          setMapChanged(true);
+          setShowMapUploadDialog(false);
+
+          toast({
+            title: 'Изображение загружено',
+            description: 'Нажмите "Сохранить карту" чтобы применить изменения',
+          });
+          
+          setLoading(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
+        } catch (uploadError) {
+          toast({
+            title: 'Ошибка загрузки',
+            description: uploadError instanceof Error ? uploadError.message : 'Не удалось загрузить изображение',
+            variant: 'destructive',
+          });
+          setLoading(false);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
         }
       };
 

@@ -120,8 +120,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     user = cur.fetchone()
                 
                 cur.execute(
-                    "INSERT INTO events (user_id, name, date, location) VALUES (%s, %s, %s, %s) RETURNING *",
-                    (user['id'], body_data.get('name'), body_data.get('date'), body_data.get('location'))
+                    "INSERT INTO events (user_id, name, date, location, map_url) VALUES (%s, %s, %s, %s, %s) RETURNING *",
+                    (user['id'], body_data.get('name'), body_data.get('date'), body_data.get('location'), body_data.get('map_url'))
                 )
                 conn.commit()
                 new_event = cur.fetchone()
@@ -133,6 +133,49 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'Access-Control-Allow-Origin': '*'
                     },
                     'body': json.dumps(dict(new_event), default=str),
+                    'isBase64Encoded': False
+                }
+            
+            if action == 'update_map':
+                event_id = body_data.get('event_id')
+                map_url = body_data.get('map_url')
+                
+                if not event_id or not map_url:
+                    return {
+                        'statusCode': 400,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({'error': 'event_id and map_url are required'}),
+                        'isBase64Encoded': False
+                    }
+                
+                cur.execute(
+                    "UPDATE events SET map_url = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *",
+                    (map_url, event_id)
+                )
+                conn.commit()
+                updated_event = cur.fetchone()
+                
+                if not updated_event:
+                    return {
+                        'statusCode': 404,
+                        'headers': {
+                            'Content-Type': 'application/json',
+                            'Access-Control-Allow-Origin': '*'
+                        },
+                        'body': json.dumps({'error': 'Event not found'}),
+                        'isBase64Encoded': False
+                    }
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps(dict(updated_event), default=str),
                     'isBase64Encoded': False
                 }
             

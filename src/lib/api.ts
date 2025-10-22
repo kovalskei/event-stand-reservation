@@ -8,6 +8,7 @@ export interface Event {
   location: string;
   created_at: string;
   updated_at: string;
+  map_url?: string;
 }
 
 export interface Booth {

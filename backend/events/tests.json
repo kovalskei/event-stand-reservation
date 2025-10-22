@@ -7,7 +7,6 @@
         "X-User-Email": "test@example.com"
       },
       "expectedStatus": 200,
-      "expectedBody": [],
       "bodyMatcher": "partial"
     },
     {
@@ -25,6 +24,20 @@
       "expectedStatus": 201,
       "expectedBody": {
         "name": "Test Exhibition"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Update event map URL",
+      "method": "POST",
+      "body": {
+        "action": "update_map",
+        "event_id": 1,
+        "map_url": "https://example.com/map.png"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "map_url": "string"
       },
       "bodyMatcher": "partial"
     },

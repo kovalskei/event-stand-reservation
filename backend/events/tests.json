@@ -1,0 +1,55 @@
+{
+  "tests": [
+    {
+      "name": "Get events for user",
+      "method": "GET",
+      "headers": {
+        "X-User-Email": "test@example.com"
+      },
+      "expectedStatus": 200,
+      "expectedBody": [],
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Create new event",
+      "method": "POST",
+      "headers": {
+        "X-User-Email": "test@example.com"
+      },
+      "body": {
+        "action": "create_event",
+        "name": "Test Exhibition",
+        "date": "2025-11-15",
+        "location": "Moscow"
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "name": "Test Exhibition"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Save booths",
+      "method": "POST",
+      "body": {
+        "action": "save_booths",
+        "event_id": 1,
+        "booths": [
+          {
+            "id": "A1",
+            "x": 50,
+            "y": 50,
+            "width": 100,
+            "height": 100,
+            "status": "available"
+          }
+        ]
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

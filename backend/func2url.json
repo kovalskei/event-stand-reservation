@@ -1,4 +1,5 @@
 {
+  "events": "https://functions.poehali.dev/c9b46bff-046e-40ca-b12e-632b8ad7462f",
   "detect-booths": "https://functions.poehali.dev/c2e9e565-4a01-4b37-8c5b-7853ae94e5bd",
   "google-sheets": "https://functions.poehali.dev/0a047b83-702c-4547-ae04-ff2dd383ee27"
 }

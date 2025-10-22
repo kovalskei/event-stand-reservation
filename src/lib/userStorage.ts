@@ -11,6 +11,7 @@ interface UserEventData {
   boothPositions: BoothPosition[];
   sheetUrl: string;
   lastSync?: string;
+  deletedBoothIds?: string[];
 }
 
 interface UserData {
@@ -102,5 +103,14 @@ export const userStorage = {
     const userData = this.getUserData(email);
     delete userData.events[eventId];
     this.saveUserData(email, userData);
+  },
+
+  getDeletedBoothIds(email: string, eventId: string): string[] {
+    const eventData = this.getEventData(email, eventId);
+    return eventData?.deletedBoothIds || [];
+  },
+
+  saveDeletedBoothIds(email: string, eventId: string, deletedIds: string[]): void {
+    this.saveEventData(email, eventId, { deletedBoothIds: deletedIds });
   }
 };

@@ -123,6 +123,7 @@ export default function Index() {
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
   const [isMousePanning, setIsMousePanning] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [deletedBoothIds, setDeletedBoothIds] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { exportToPDF } = usePDFExport({ containerRef, selectedEvent, booths });
@@ -177,6 +178,10 @@ export default function Index() {
       const eventId = Number(mappedEvents[0].id);
       const data = await api.getBooths(eventId);
       
+      // Загружаем удалённые ID из localStorage
+      const deletedIds = userStorage.getDeletedBoothIds(userEmail, mappedEvents[0].id);
+      setDeletedBoothIds(new Set(deletedIds));
+      
       if (data.sheet_url) {
         setSheetUrl(data.sheet_url);
         // Автоматически загружаем данные из таблицы
@@ -189,7 +194,8 @@ export default function Index() {
           
           if (response.ok) {
             const sheetData = await response.json();
-            setBooths(sheetData.booths);
+            const filteredBooths = sheetData.booths.filter((b: Booth) => !deletedIds.includes(b.id));
+            setBooths(filteredBooths);
             setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
           }
         } catch (error) {
@@ -198,7 +204,8 @@ export default function Index() {
       }
       
       if (data.booths && data.booths.length > 0) {
-        const boothPositions = data.booths.map(b => ({
+        const filteredBooths = data.booths.filter(b => !deletedIds.includes(b.id));
+        const boothPositions = filteredBooths.map(b => ({
           id: b.id,
           x: b.x,
           y: b.y,
@@ -306,6 +313,14 @@ export default function Index() {
   const handleDeleteBooth = async (boothId: string) => {
     setBooths(prev => prev.filter(b => b.id !== boothId));
     setPositions(prev => prev.filter(p => p.id !== boothId));
+    
+    const newDeletedIds = new Set(deletedBoothIds).add(boothId);
+    setDeletedBoothIds(newDeletedIds);
+    
+    // Сохраняем в localStorage
+    if (userEmail) {
+      userStorage.saveDeletedBoothIds(userEmail, selectedEvent.id, Array.from(newDeletedIds));
+    }
     
     toast({
       title: 'Стенд удалён',
@@ -595,7 +610,9 @@ export default function Index() {
       }
 
       const data = await response.json();
-      setBooths(data.booths);
+      // Фильтруем удалённые стенды
+      const filteredBooths = data.booths.filter((booth: Booth) => !deletedBoothIds.has(booth.id));
+      setBooths(filteredBooths);
       
       if (data.mapUrl) {
         setSelectedEvent(prev => ({

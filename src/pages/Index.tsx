@@ -149,40 +149,48 @@ export default function Index() {
     if (!userEmail) return;
     
     try {
-      const backendEvents = await api.getEvents(userEmail);
+      let backendEvents = await api.getEvents(userEmail);
       console.log('Loaded events from backend:', backendEvents);
-      if (backendEvents.length > 0) {
-        const mappedEvents = backendEvents.map(e => ({
-          id: String(e.id),
-          name: e.name,
-          date: e.date || '',
-          location: e.location || '',
-          mapUrl: e.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
-          sheetId: '',
+      
+      if (backendEvents.length === 0) {
+        console.log('No events found, creating default event...');
+        const newEvent = await api.createEvent(userEmail, {
+          name: 'Выставка 2025',
+          date: '15-20 марта 2025',
+          location: 'Павильон 1'
+        });
+        backendEvents = [newEvent];
+      }
+      
+      const mappedEvents = backendEvents.map(e => ({
+        id: String(e.id),
+        name: e.name,
+        date: e.date || '',
+        location: e.location || '',
+        mapUrl: e.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+        sheetId: '',
+      }));
+      console.log('Mapped events:', mappedEvents);
+      setEvents(mappedEvents);
+      setSelectedEvent(mappedEvents[0]);
+      
+      const eventId = Number(mappedEvents[0].id);
+      const data = await api.getBooths(eventId);
+      if (data.booths && data.booths.length > 0) {
+        const boothPositions = data.booths.map(b => ({
+          id: b.id,
+          x: b.x,
+          y: b.y,
+          width: b.width,
+          height: b.height,
+          rotation: b.rotation || 0
         }));
-        console.log('Mapped events:', mappedEvents);
-        setEvents(mappedEvents);
-        setSelectedEvent(mappedEvents[0]);
-        
-        const eventId = Number(mappedEvents[0].id);
-        const data = await api.getBooths(eventId);
-        if (data.booths && data.booths.length > 0) {
-          const boothPositions = data.booths.map(b => ({
-            id: b.id,
-            x: b.x,
-            y: b.y,
-            width: b.width,
-            height: b.height,
-            rotation: b.rotation || 0
-          }));
-          setPositions(boothPositions);
-        }
-      } else {
-        setEvents(mockEvents);
-        setSelectedEvent(mockEvents[0]);
+        setPositions(boothPositions);
       }
     } catch (error) {
       console.error('Failed to load events:', error);
+      setEvents(mockEvents);
+      setSelectedEvent(mockEvents[0]);
     }
   };
 

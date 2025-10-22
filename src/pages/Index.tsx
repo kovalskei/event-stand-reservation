@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { LoginDialog } from '@/components/LoginDialog';
+import Auth from '@/components/Auth';
+import UserProfile from '@/components/UserProfile';
 import { api } from '@/lib/api';
 import Icon from '@/components/ui/icon';
 import { usePDFExport } from '@/hooks/usePDFExport';
@@ -96,7 +97,6 @@ const defaultPositions: BoothPosition[] = [
 
 export default function Index() {
   const { userEmail, logout } = useAuth();
-  const [showLoginDialog, setShowLoginDialog] = useState(!userEmail);
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [selectedEvent, setSelectedEvent] = useState<Event>(mockEvents[0]);
   const [booths, setBooths] = useState<Booth[]>(initialBooths);
@@ -145,9 +145,7 @@ export default function Index() {
   const SNAP_THRESHOLD = 1.5;
 
   useEffect(() => {
-    if (!userEmail) {
-      setShowLoginDialog(true);
-    } else {
+    if (userEmail) {
       loadEventsFromBackend();
     }
   }, [userEmail]);
@@ -877,6 +875,13 @@ export default function Index() {
     }
   };
 
+  if (!userEmail) {
+    return <Auth onLogin={(email) => {
+      localStorage.setItem('userEmail', email);
+      window.location.reload();
+    }} />;
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -886,10 +891,13 @@ export default function Index() {
               <Icon name="CalendarDays" size={32} className="text-primary" />
               <h1 className="text-4xl font-bold text-gray-900">Бронирование стендов</h1>
             </div>
-            <Button onClick={() => setShowSheetDialog(true)} variant="outline">
-              <Icon name="Sheet" size={16} className="mr-2" />
-              Синхронизация с Google Таблицами
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button onClick={() => setShowSheetDialog(true)} variant="outline">
+                <Icon name="Sheet" size={16} className="mr-2" />
+                Синхронизация с Google Таблицами
+              </Button>
+              <UserProfile email={userEmail} onLogout={logout} />
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
@@ -908,21 +916,6 @@ export default function Index() {
                 </option>
               ))}
             </select>
-            
-            {userEmail ? (
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-sm text-gray-600">{userEmail}</span>
-                <Button onClick={logout} variant="outline" size="sm">
-                  <Icon name="LogOut" size={16} className="mr-2" />
-                  Выйти
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={() => setShowLoginDialog(true)} size="sm" className="ml-auto">
-                <Icon name="LogIn" size={16} className="mr-2" />
-                Войти
-              </Button>
-            )}
           </div>
         </header>
 
@@ -1635,7 +1628,7 @@ export default function Index() {
         </DialogContent>
       </Dialog>
 
-      <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
+
     </div>
   );
 }

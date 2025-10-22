@@ -110,12 +110,12 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       
       ctx.drawImage(mapImg, 0, 0);
       
-      const headerFontSize = Math.max(60, mapImg.width / 40);
-      const subHeaderFontSize = Math.max(32, mapImg.width / 80);
-      const headerY = Math.max(80, mapImg.height / 15);
+      const headerFontSize = Math.max(80, mapImg.width / 25);
+      const subHeaderFontSize = Math.max(48, mapImg.width / 50);
+      const headerY = Math.max(100, mapImg.height / 12);
       
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.fillRect(0, 0, mapImg.width, headerY + 40);
+      ctx.fillRect(0, 0, mapImg.width, headerY + 80);
       
       ctx.fillStyle = '#000';
       ctx.font = `bold ${headerFontSize}px Arial`;

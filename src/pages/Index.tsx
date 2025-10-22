@@ -174,7 +174,7 @@ export default function Index() {
         name: e.name,
         date: e.date || '',
         location: e.location || '',
-        mapUrl: e.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+        mapUrl: e.map_url || '',
         sheetId: '',
       }));
       console.log('Mapped events:', mappedEvents);

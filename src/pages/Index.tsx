@@ -168,6 +168,20 @@ export default function Index() {
         }));
         setEvents(mappedEvents);
         setSelectedEvent(mappedEvents[0]);
+        
+        const eventId = Number(mappedEvents[0].id);
+        const savedBooths = await api.getBooths(eventId);
+        if (savedBooths && savedBooths.length > 0) {
+          const boothPositions = savedBooths.map(b => ({
+            id: b.id,
+            x: b.x,
+            y: b.y,
+            width: b.width,
+            height: b.height,
+            rotation: 0
+          }));
+          setPositions(boothPositions);
+        }
       } else {
         setEvents(mockEvents);
         setSelectedEvent(mockEvents[0]);

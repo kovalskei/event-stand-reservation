@@ -1480,11 +1480,11 @@ export default function Index() {
                   className="w-full h-full object-contain pointer-events-none"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100">
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 pointer-events-auto" style={{ transform: 'none' }}>
                   <img 
                     src="https://cdn.poehali.dev/projects/caf7fa39-5c17-460f-81ae-2930d894392d/files/77255e2d-6b25-413f-9766-92c23b91375f.jpg"
                     alt="Загрузите карту"
-                    className="w-1/2 h-1/2 object-contain opacity-40 mb-8"
+                    className="max-w-md max-h-96 object-contain opacity-40 mb-8"
                   />
                   <div className="text-center">
                     <h3 className="text-2xl font-semibold text-gray-700 mb-3">Карта мероприятия не загружена</h3>

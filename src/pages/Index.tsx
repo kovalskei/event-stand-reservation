@@ -205,12 +205,45 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
-    if (saved) {
-      setPositions(JSON.parse(saved));
-    } else {
-      setPositions(defaultPositions);
-    }
+    const loadEventData = async () => {
+      const eventId = Number(selectedEvent.id);
+      
+      try {
+        const savedBooths = await api.getBooths(eventId);
+        if (savedBooths && savedBooths.length > 0) {
+          const boothPositions = savedBooths.map(b => ({
+            id: b.id,
+            x: b.x,
+            y: b.y,
+            width: b.width,
+            height: b.height,
+            rotation: 0
+          }));
+          setPositions(boothPositions);
+        } else {
+          const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
+          if (saved) {
+            setPositions(JSON.parse(saved));
+          } else {
+            setPositions(defaultPositions);
+          }
+        }
+      } catch (error) {
+        const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
+        if (saved) {
+          setPositions(JSON.parse(saved));
+        } else {
+          setPositions(defaultPositions);
+        }
+      }
+      
+      const savedSheetUrl = localStorage.getItem(`sheet-url-${selectedEvent.id}`);
+      if (savedSheetUrl) {
+        setSheetUrl(savedSheetUrl);
+      }
+    };
+    
+    loadEventData();
   }, [selectedEvent.id]);
 
   const getBoothColor = (status: BoothStatus) => {

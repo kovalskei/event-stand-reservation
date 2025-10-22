@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "Test save image endpoint",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "fileName": "test.png",
+        "dataUrl": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true,
+        "path": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}

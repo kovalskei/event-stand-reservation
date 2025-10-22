@@ -803,10 +803,15 @@ export default function Index() {
       return;
     }
 
+    const timestamp = Date.now();
+    const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const fileName = `map_${timestamp}_${safeFileName}`;
+    const imageUrl = `/images/${fileName}`;
+
     setLoading(true);
     toast({
       title: 'Загрузка изображения',
-      description: 'Изображение сохраняется на сервер...',
+      description: 'Сохраняем в /public/images...',
     });
 
     try {
@@ -816,20 +821,20 @@ export default function Index() {
         const dataUrl = reader.result as string;
         
         try {
-          const uploadResponse = await fetch('https://functions.poehali.dev/dda5eec5-ce80-45f7-b5b4-bc8a3896d9c9', {
+          const response = await fetch('/api/save-image', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ image: dataUrl }),
+            body: JSON.stringify({ 
+              fileName, 
+              dataUrl 
+            }),
           });
 
-          if (!uploadResponse.ok) {
-            throw new Error('Не удалось загрузить изображение на сервер');
+          if (!response.ok) {
+            throw new Error('Не удалось сохранить изображение');
           }
-
-          const uploadData = await uploadResponse.json();
-          const imageUrl = uploadData.url;
 
           setSelectedEvent(prev => ({
             ...prev,
@@ -845,7 +850,7 @@ export default function Index() {
 
           toast({
             title: 'Изображение загружено',
-            description: 'Нажмите "Сохранить карту" чтобы применить изменения',
+            description: 'Файл сохранён в /public/images. Нажмите "Сохранить карту" чтобы применить изменения',
           });
           
           setLoading(false);
@@ -1630,7 +1635,7 @@ export default function Index() {
                 onChange={handleMapUpload}
                 className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/80 cursor-pointer"
               />
-              <p className="text-xs text-red-500">⚠️ Локальные файлы не сохраняются в БД, используйте URL</p>
+              <p className="text-xs text-green-600">✅ Файл будет сохранён в /public/images вашего проекта</p>
             </div>
 
             <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
@@ -1638,8 +1643,8 @@ export default function Index() {
                 <Icon name="Info" size={20} className="text-primary mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-gray-600">
                   <p className="font-medium text-gray-900 mb-2">Рекомендации:</p>
-                  <p>• Используйте URL изображения с CDN (например: https://cdn.poehali.dev/files/...)</p>
-                  <p>• Или загрузите через сторонний хостинг (imgur.com, imgbb.com)</p>
+                  <p>• Загрузите файл — он сохранится в /public/images</p>
+                  <p>• Файлы попадут в GitHub при следующем коммите</p>
                   <p>• Формат: PNG, JPG, JPEG</p>
                   <p>• Соотношение сторон: 1920×850 (широкоформатное)</p>
                 </div>

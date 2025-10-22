@@ -79,23 +79,10 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({'error': 'Invalid base64 data'})
             }
         
-        # Generate unique filename
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        hash_suffix = hashlib.md5(image_bytes).hexdigest()[:8]
-        filename = f"map_{timestamp}_{hash_suffix}.png"
-        
-        # Create public directory if it doesn't exist
-        public_dir = '/tmp/public'
-        os.makedirs(public_dir, exist_ok=True)
-        
-        file_path = os.path.join(public_dir, filename)
-        
-        # Save file
-        with open(file_path, 'wb') as f:
-            f.write(image_bytes)
-        
-        # Generate public URL
-        image_url = f"/public/{filename}"
+        # For now, return the data URL directly
+        # In production, this should upload to S3 or CDN
+        image_url = f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
+        filename = f"map_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
         
         return {
             'statusCode': 200,

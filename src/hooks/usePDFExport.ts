@@ -159,24 +159,18 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
         ctx.translate(-centerX, -centerY);
         
         if (booth.status === 'available') {
-          ctx.fillStyle = 'rgba(22, 163, 74, 0.4)';
-          ctx.strokeStyle = 'rgb(22, 163, 74)';
+          ctx.fillStyle = 'rgb(22, 163, 74)';
         } else if (booth.status === 'booked') {
-          ctx.fillStyle = 'rgba(220, 38, 38, 0.4)';
-          ctx.strokeStyle = 'rgb(220, 38, 38)';
+          ctx.fillStyle = 'rgb(220, 38, 38)';
         } else {
-          ctx.fillStyle = 'rgba(100, 116, 139, 0.4)';
-          ctx.strokeStyle = 'rgb(100, 116, 139)';
+          ctx.fillStyle = 'rgba(100, 116, 139)';
         }
         
-        const lineWidth = Math.max(2, mapImg.width / 600);
         const fontSize = Math.max(16, mapImg.width / 80);
         
-        ctx.lineWidth = lineWidth;
         ctx.fillRect(x, y, w, h);
-        ctx.strokeRect(x, y, w, h);
         
-        ctx.fillStyle = '#000';
+        ctx.fillStyle = '#fff';
         ctx.font = `bold ${fontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';

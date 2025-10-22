@@ -835,6 +835,32 @@ export default function Index() {
           const data = await response.json();
           const imageUrl = data.url;
 
+          // Сохраняем URL карты в базу данных
+          try {
+            const saveResponse = await fetch('https://functions.poehali.dev/c9b46bff-046e-40ca-b12e-632b8ad7462f', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                action: 'update_map',
+                event_id: selectedEvent.id,
+                map_url: imageUrl,
+              }),
+            });
+
+            if (!saveResponse.ok) {
+              throw new Error('Не удалось сохранить карту в базу данных');
+            }
+          } catch (saveError) {
+            console.error('Failed to save map URL:', saveError);
+            toast({
+              title: 'Предупреждение',
+              description: 'Карта загружена, но не сохранена в базу. Нажмите "Сохранить карту".',
+              variant: 'destructive',
+            });
+          }
+
           setSelectedEvent(prev => ({
             ...prev,
             mapUrl: imageUrl
@@ -844,12 +870,12 @@ export default function Index() {
             e.id === selectedEvent.id ? { ...e, mapUrl: imageUrl } : e
           ));
 
-          setMapChanged(true);
+          setMapChanged(false);
           setShowMapUploadDialog(false);
 
           toast({
-            title: 'Изображение загружено',
-            description: 'Файл загружен на ImgBB. Нажмите "Сохранить карту" чтобы применить изменения',
+            title: 'Карта загружена и сохранена',
+            description: 'Изображение загружено на ImgBB и сохранено в базу данных',
           });
           
           setLoading(false);

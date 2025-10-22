@@ -249,6 +249,17 @@ export default function Index() {
             if (response.ok) {
               const sheetData = await response.json();
               setBooths(sheetData.booths);
+              
+              const boothPositions = (data.booths || []).map(b => ({
+                id: b.id,
+                x: b.x,
+                y: b.y,
+                width: b.width,
+                height: b.height,
+                rotation: b.rotation || 0
+              }));
+              setPositions(boothPositions);
+              
               setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
             }
           } catch (error) {

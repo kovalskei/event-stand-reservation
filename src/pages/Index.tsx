@@ -141,6 +141,26 @@ export default function Index() {
   const SNAP_THRESHOLD = 1.5;
 
   useEffect(() => {
+    const centerMap = () => {
+      const parent = containerRef.current?.parentElement;
+      if (!parent) return;
+      
+      const parentRect = parent.getBoundingClientRect();
+      const containerWidth = 2400;
+      const containerHeight = 1200;
+      
+      const centerX = (parentRect.width - containerWidth) / 2;
+      const centerY = (parentRect.height - containerHeight) / 2;
+      
+      setPanOffset({ x: centerX, y: centerY });
+    };
+    
+    centerMap();
+    window.addEventListener('resize', centerMap);
+    return () => window.removeEventListener('resize', centerMap);
+  }, []);
+
+  useEffect(() => {
     if (userEmail) {
       loadEventsFromBackend();
     }

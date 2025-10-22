@@ -701,7 +701,7 @@ export default function Index() {
     });
 
     try {
-      const fontResponse = await fetch('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff');
+      const fontResponse = await fetch('https://github.com/google/fonts/raw/main/apache/roboto/static/Roboto-Regular.ttf');
       const fontBlob = await fontResponse.arrayBuffer();
       const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontBlob)));
 

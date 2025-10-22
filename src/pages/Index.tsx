@@ -125,7 +125,7 @@ export default function Index() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
-  const { exportToPDF } = usePDFExport({ containerRef, selectedEvent, booths });
+  const { exportToPDF } = usePDFExport({ containerRef, selectedEvent, booths, positions });
   
   const [gridMode, setGridMode] = useState(false);
   const [grid, setGrid] = useState({ x: 10, y: 10, width: 80, height: 60, rotation: 0, rows: 3, cols: 3 });

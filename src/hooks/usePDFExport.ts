@@ -14,13 +14,23 @@ interface Booth {
   company?: string;
 }
 
-interface UsePDFExportProps {
-  containerRef: React.RefObject<HTMLDivElement>;
-  selectedEvent: Event;
-  booths: Booth[];
+interface BoothPosition {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
 }
 
-export const usePDFExport = ({ containerRef, selectedEvent, booths }: UsePDFExportProps) => {
+interface UsePDFExportProps {
+  containerRef: React.RefObject<HTMLDivElement>;
+  selectedEvent: Event & { mapUrl: string };
+  booths: Booth[];
+  positions: BoothPosition[];
+}
+
+export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }: UsePDFExportProps) => {
   const { toast } = useToast();
 
   const exportToPDF = async () => {
@@ -47,16 +57,45 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths }: UsePDFExpo
       });
       document.body.removeChild(headerDiv);
 
-      const clone = mapElement.cloneNode(true) as HTMLElement;
-      clone.style.position = 'absolute';
-      clone.style.left = '-9999px';
-      clone.style.top = '0';
-      clone.style.transform = 'none';
-      clone.style.width = '2400px';
-      clone.style.height = '1200px';
-      document.body.appendChild(clone);
-
-      const mapCanvas = await html2canvas(clone, {
+      const mapContainer = document.createElement('div');
+      mapContainer.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 2400px; height: 1200px; background: white;';
+      
+      const mapImg = document.createElement('img');
+      mapImg.src = selectedEvent.mapUrl;
+      mapImg.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+      mapContainer.appendChild(mapImg);
+      
+      positions.forEach(pos => {
+        const booth = booths.find(b => b.id === pos.id);
+        if (!booth) return;
+        
+        const boothDiv = document.createElement('div');
+        boothDiv.style.cssText = `
+          position: absolute;
+          left: ${pos.x}%;
+          top: ${pos.y}%;
+          width: ${pos.width}%;
+          height: ${pos.height}%;
+          transform: rotate(${pos.rotation || 0}deg);
+          transform-origin: center;
+          border: 2px solid ${booth.status === 'booked' ? '#16a34a' : '#3b82f6'};
+          background-color: ${booth.status === 'booked' ? 'rgba(22, 163, 74, 0.2)' : 'rgba(59, 130, 246, 0.2)'};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 14px;
+          color: #000;
+        `;
+        boothDiv.textContent = booth.id;
+        mapContainer.appendChild(boothDiv);
+      });
+      
+      document.body.appendChild(mapContainer);
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const mapCanvas = await html2canvas(mapContainer, {
         scale: 1,
         backgroundColor: '#ffffff',
         logging: false,
@@ -66,7 +105,7 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths }: UsePDFExpo
         height: 1200,
       });
       
-      document.body.removeChild(clone);
+      document.body.removeChild(mapContainer);
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       

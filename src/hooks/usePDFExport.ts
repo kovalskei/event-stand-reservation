@@ -87,43 +87,10 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       const mapX = (pageWidth - mapWidth) / 2;
       const mapY = 30;
       
-      const WEB_CONTAINER_ASPECT = 1920 / 850;
-      const imageAspect = mapImg.width / mapImg.height;
-      
-      console.log('PDF Export Debug:', {
-        imageWidth: mapImg.width,
-        imageHeight: mapImg.height,
-        imageAspect,
-        containerAspect: WEB_CONTAINER_ASPECT,
-      });
-      
-      let containerWidth: number;
-      let containerHeight: number;
-      let imageOffsetX = 0;
-      let imageOffsetY = 0;
-      let imageRenderWidth: number;
-      let imageRenderHeight: number;
-      
-      if (imageAspect > WEB_CONTAINER_ASPECT) {
-        containerWidth = 1920;
-        containerHeight = 850;
-        imageRenderWidth = containerWidth;
-        imageRenderHeight = containerWidth / imageAspect;
-        imageOffsetY = (containerHeight - imageRenderHeight) / 2;
-        console.log('Image wider than container - letterbox top/bottom', { imageOffsetY });
-      } else {
-        containerWidth = 1920;
-        containerHeight = 850;
-        imageRenderHeight = containerHeight;
-        imageRenderWidth = containerHeight * imageAspect;
-        imageOffsetX = (containerWidth - imageRenderWidth) / 2;
-        console.log('Image taller than container - letterbox left/right', { imageOffsetX });
-      }
-      
-      const scaleX = mapImg.width / imageRenderWidth;
-      const scaleY = mapImg.height / imageRenderHeight;
-      
-      console.log('Scale factors:', { scaleX, scaleY });
+      console.log('=== PDF Export Debug ===');
+      console.log('Image actual size:', mapImg.width, 'x', mapImg.height);
+      console.log('Image aspect:', mapImg.width / mapImg.height);
+      console.log('Container aspect (web):', 1920 / 850);
       
       const canvas = document.createElement('canvas');
       canvas.width = mapImg.width;
@@ -136,29 +103,12 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
         const booth = booths.find(b => b.id === pos.id);
         if (!booth) return;
         
-        const webXPercent = pos.x / 100;
-        const webYPercent = pos.y / 100;
-        const webWPercent = pos.width / 100;
-        const webHPercent = pos.height / 100;
+        const x = (pos.x / 100) * mapImg.width;
+        const y = (pos.y / 100) * mapImg.height;
+        const w = (pos.width / 100) * mapImg.width;
+        const h = (pos.height / 100) * mapImg.height;
         
-        const webX = webXPercent * containerWidth;
-        const webY = webYPercent * containerHeight;
-        const webW = webWPercent * containerWidth;
-        const webH = webHPercent * containerHeight;
-        
-        const imageX = webX - imageOffsetX;
-        const imageY = webY - imageOffsetY;
-        
-        const x = imageX * scaleX;
-        const y = imageY * scaleY;
-        const w = webW * scaleX;
-        const h = webH * scaleY;
-        
-        console.log(`Booth ${booth.id}:`, {
-          webPos: { x: webX, y: webY, w: webW, h: webH },
-          imagePos: { x: imageX, y: imageY },
-          canvasPos: { x, y, w, h },
-        });
+        console.log(`Booth ${booth.id}: pos=${pos.x},${pos.y} size=${pos.width}x${pos.height}% → canvas=${Math.round(x)},${Math.round(y)} size=${Math.round(w)}x${Math.round(h)}px`);
         
         if (booth.status === 'booked') {
           ctx.fillStyle = 'rgba(22, 163, 74, 0.3)';

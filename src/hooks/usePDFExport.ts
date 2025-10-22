@@ -87,17 +87,17 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       const mapX = (pageWidth - mapWidth) / 2;
       const mapY = 30;
       
-      const WEB_CONTAINER_ASPECT = 1920 / 850;
+      const containerWidth = 2400;
+      const containerHeight = 1200;
+      const WEB_CONTAINER_ASPECT = containerWidth / containerHeight;
       const imageAspect = mapImg.width / mapImg.height;
       
       console.log('PDF Debug:', {
         imageSize: `${mapImg.width}x${mapImg.height}`,
         imageAspect: imageAspect.toFixed(3),
         containerAspect: WEB_CONTAINER_ASPECT.toFixed(3),
+        containerSize: `${containerWidth}x${containerHeight}`,
       });
-      
-      const containerWidth = 1920;
-      const containerHeight = 850;
       let imageOffsetX = 0;
       let imageOffsetY = 0;
       let imageRenderWidth: number;

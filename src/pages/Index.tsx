@@ -209,9 +209,10 @@ export default function Index() {
       const eventId = Number(selectedEvent.id);
       
       try {
-        const savedBooths = await api.getBooths(eventId);
-        if (savedBooths && savedBooths.length > 0) {
-          const boothPositions = savedBooths.map(b => ({
+        const data = await api.getBooths(eventId);
+        
+        if (data.booths && data.booths.length > 0) {
+          const boothPositions = data.booths.map(b => ({
             id: b.id,
             x: b.x,
             y: b.y,
@@ -228,6 +229,15 @@ export default function Index() {
             setPositions(defaultPositions);
           }
         }
+        
+        if (data.sheet_url) {
+          setSheetUrl(data.sheet_url);
+        } else {
+          const savedSheetUrl = localStorage.getItem(`sheet-url-${selectedEvent.id}`);
+          if (savedSheetUrl) {
+            setSheetUrl(savedSheetUrl);
+          }
+        }
       } catch (error) {
         const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
         if (saved) {
@@ -235,11 +245,11 @@ export default function Index() {
         } else {
           setPositions(defaultPositions);
         }
-      }
-      
-      const savedSheetUrl = localStorage.getItem(`sheet-url-${selectedEvent.id}`);
-      if (savedSheetUrl) {
-        setSheetUrl(savedSheetUrl);
+        
+        const savedSheetUrl = localStorage.getItem(`sheet-url-${selectedEvent.id}`);
+        if (savedSheetUrl) {
+          setSheetUrl(savedSheetUrl);
+        }
       }
     };
     
@@ -533,6 +543,15 @@ export default function Index() {
       }
       
       localStorage.setItem(`sheet-url-${selectedEvent.id}`, sheetUrl);
+      
+      if (userEmail) {
+        try {
+          await api.saveSheetUrl(Number(selectedEvent.id), sheetUrl);
+        } catch (error) {
+          console.error('Failed to save sheet URL to database:', error);
+        }
+      }
+      
       setShowSheetDialog(false);
       setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
       

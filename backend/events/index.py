@@ -49,13 +49,22 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 )
                 booths = cur.fetchall()
                 
+                cur.execute(
+                    "SELECT sheet_url FROM events WHERE id = %s",
+                    (event_id,)
+                )
+                event_data = cur.fetchone()
+                
                 return {
                     'statusCode': 200,
                     'headers': {
                         'Content-Type': 'application/json',
                         'Access-Control-Allow-Origin': '*'
                     },
-                    'body': json.dumps([dict(b) for b in booths], default=str),
+                    'body': json.dumps({
+                        'booths': [dict(b) for b in booths],
+                        'sheet_url': event_data['sheet_url'] if event_data else None
+                    }, default=str),
                     'isBase64Encoded': False
                 }
             else:
@@ -176,6 +185,26 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'Access-Control-Allow-Origin': '*'
                     },
                     'body': json.dumps(dict(updated_event), default=str),
+                    'isBase64Encoded': False
+                }
+            
+            if action == 'update_sheet_url':
+                event_id = body_data.get('event_id')
+                sheet_url = body_data.get('sheet_url')
+                
+                cur.execute(
+                    "UPDATE events SET sheet_url = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s",
+                    (sheet_url, event_id)
+                )
+                conn.commit()
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps({'success': True}),
                     'isBase64Encoded': False
                 }
             

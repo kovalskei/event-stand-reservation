@@ -62,7 +62,7 @@ export const api = {
     return response.json();
   },
 
-  async getBooths(eventId: number): Promise<Booth[]> {
+  async getBooths(eventId: number): Promise<{ booths: Booth[], sheet_url: string | null }> {
     const response = await fetch(`${API_URL}?event_id=${eventId}`, {
       method: 'GET',
     });
@@ -101,6 +101,26 @@ export const api = {
     
     if (!response.ok) {
       throw new Error('Failed to save booths');
+    }
+    
+    return response.json();
+  },
+
+  async saveSheetUrl(eventId: number, sheetUrl: string): Promise<{ success: boolean }> {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'update_sheet_url',
+        event_id: eventId,
+        sheet_url: sheetUrl,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to save sheet URL');
     }
     
     return response.json();

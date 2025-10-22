@@ -654,6 +654,10 @@ export default function Index() {
         throw new Error('Не удалось сохранить карту');
       }
 
+      setEvents(prev => prev.map(e => 
+        e.id === selectedEvent.id ? { ...e, mapUrl: selectedEvent.mapUrl } : e
+      ));
+      
       setMapChanged(false);
       toast({
         title: 'Карта сохранена',
@@ -821,6 +825,10 @@ export default function Index() {
             ...prev,
             mapUrl: imageUrl
           }));
+          
+          setEvents(prev => prev.map(e => 
+            e.id === selectedEvent.id ? { ...e, mapUrl: imageUrl } : e
+          ));
 
           setMapChanged(true);
           setShowMapUploadDialog(false);

@@ -150,6 +150,7 @@ export default function Index() {
     
     try {
       const backendEvents = await api.getEvents(userEmail);
+      console.log('Loaded events from backend:', backendEvents);
       if (backendEvents.length > 0) {
         const mappedEvents = backendEvents.map(e => ({
           id: String(e.id),
@@ -159,6 +160,7 @@ export default function Index() {
           mapUrl: e.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
           sheetId: '',
         }));
+        console.log('Mapped events:', mappedEvents);
         setEvents(mappedEvents);
         setSelectedEvent(mappedEvents[0]);
         

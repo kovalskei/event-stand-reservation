@@ -303,6 +303,15 @@ export default function Index() {
     }
   };
 
+  const handleDeleteBooth = (boothId: string) => {
+    setBooths(prev => prev.filter(b => b.id !== boothId));
+    setPositions(prev => prev.filter(p => p.id !== boothId));
+    toast({
+      title: 'Стенд удалён',
+      description: `Стенд ${boothId} удалён из списка`,
+    });
+  };
+
   const stats = {
     total: booths.length,
     available: booths.filter(b => b.status === 'available').length,
@@ -1568,6 +1577,21 @@ export default function Index() {
                 <p className="text-booth-available font-bold text-lg">Стенд свободен для бронирования</p>
                 <p className="text-gray-600 text-sm mt-2">Свяжитесь с менеджером для оформления брони</p>
               </div>
+            )}
+
+            {editMode && selectedBooth && (
+              <Button
+                size="sm"
+                variant="destructive"
+                className="w-full"
+                onClick={() => {
+                  handleDeleteBooth(selectedBooth.id);
+                  setSelectedBooth(null);
+                }}
+              >
+                <Icon name="Trash2" className="mr-2" size={16} />
+                Удалить стенд
+              </Button>
             )}
           </div>
         </DialogContent>

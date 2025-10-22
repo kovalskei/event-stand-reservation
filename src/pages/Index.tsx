@@ -1,102 +1,25 @@
 import { useState, useRef, useEffect } from 'react';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { LoginDialog } from '@/components/LoginDialog';
 import { api } from '@/lib/api';
-import Icon from '@/components/ui/icon';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-type BoothStatus = 'available' | 'booked' | 'unavailable';
-
-interface Booth {
-  id: string;
-  status: BoothStatus;
-  company?: string;
-  contact?: string;
-  price?: string;
-  size?: string;
-}
-
-interface BoothPosition {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  rotation?: number;
-}
-
-interface Event {
-  id: string;
-  name: string;
-  date: string;
-  location: string;
-  mapUrl: string;
-  sheetId: string;
-}
-
-const mockEvents: Event[] = [
-  {
-    id: '1',
-    name: 'Выставка 2025',
-    date: '15-20 марта 2025',
-    location: 'Павильон 1',
-    mapUrl: 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
-    sheetId: '',
-  },
-  {
-    id: '2',
-    name: 'Tech Forum 2025',
-    date: '5-10 апреля 2025',
-    location: 'Павильон 2',
-    mapUrl: 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
-    sheetId: '',
-  },
-];
-
-const initialBooths: Booth[] = [
-  { id: 'A1', status: 'available' },
-  { id: 'A2', status: 'booked', company: 'ТехноПром', contact: 'Иванов И.И.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A3', status: 'available' },
-  { id: 'A4', status: 'available' },
-  { id: 'A5', status: 'booked', company: 'ИнноВейт', contact: 'Петрова А.С.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A6', status: 'available' },
-  { id: 'A7', status: 'available' },
-  { id: 'A8', status: 'available' },
-  { id: 'A9', status: 'available' },
-  { id: 'A10', status: 'booked', company: 'МегаСтрой', contact: 'Сидоров П.П.', price: '50 000 ₽', size: '3x3 м' },
-  { id: 'A11', status: 'available' },
-  { id: 'A12', status: 'available' },
-  { id: 'B1', status: 'available' },
-  { id: 'B2', status: 'available' },
-  { id: 'B3', status: 'booked', company: 'ЭкоЛайн', contact: 'Морозова Е.В.', price: '75 000 ₽', size: '4x4 м' },
-];
-
-const defaultPositions: BoothPosition[] = [
-  { id: 'A1', x: 19, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A2', x: 24.15, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A3', x: 29.3, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A4', x: 34.45, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A5', x: 39.6, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A6', x: 44.75, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A7', x: 49.9, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A8', x: 55.05, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A9', x: 60.2, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A10', x: 65.35, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A11', x: 70.5, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'A12', x: 75.65, y: 18, width: 5, height: 10.5, rotation: 0 },
-  { id: 'B1', x: 43, y: 50.5, width: 4.5, height: 10.5, rotation: 0 },
-  { id: 'B2', x: 47.8, y: 50.5, width: 4.5, height: 10.5, rotation: 0 },
-  { id: 'B3', x: 52.6, y: 50.5, width: 4.5, height: 10.5, rotation: 0 },
-];
+import { Booth, BoothPosition, Event, BoothStatus, Grid } from '@/components/expo/types';
+import { mockEvents, initialBooths, defaultPositions, SNAP_THRESHOLD } from '@/components/expo/constants';
+import { snapToNeighbors, getAngle } from '@/components/expo/utils';
+import { Header } from '@/components/expo/Header';
+import { EventSelector } from '@/components/expo/EventSelector';
+import { Statistics } from '@/components/expo/Statistics';
+import { ControlPanel } from '@/components/expo/ControlPanel';
+import { MapCanvas } from '@/components/expo/MapCanvas';
+import { BoothInfoDialog } from '@/components/expo/BoothInfoDialog';
+import { SheetDialog } from '@/components/expo/SheetDialog';
+import { GridControlDialog } from '@/components/expo/GridControlDialog';
 
 export default function Index() {
-  const { userEmail, logout } = useAuth();
+  const { userEmail } = useAuth();
   const [showLoginDialog, setShowLoginDialog] = useState(!userEmail);
   const [events] = useState<Event[]>(mockEvents);
   const [selectedEvent, setSelectedEvent] = useState<Event>(mockEvents[0]);
@@ -133,7 +56,7 @@ export default function Index() {
   const { toast } = useToast();
   
   const [gridMode, setGridMode] = useState(false);
-  const [grid, setGrid] = useState({ x: 10, y: 10, width: 80, height: 60, rotation: 0, rows: 3, cols: 3 });
+  const [grid, setGrid] = useState<Grid>({ x: 10, y: 10, width: 80, height: 60, rotation: 0, rows: 3, cols: 3 });
   const [gridCellAssignments, setGridCellAssignments] = useState<Record<number, string>>({});
   const [editingGrid, setEditingGrid] = useState(false);
   const [draggingGrid, setDraggingGrid] = useState(false);
@@ -141,8 +64,6 @@ export default function Index() {
   const [rotatingGrid, setRotatingGrid] = useState(false);
   const [rotationStart, setRotationStart] = useState<{ angle: number; rotation: number } | null>(null);
   const [snapEnabled, setSnapEnabled] = useState(true);
-
-  const SNAP_THRESHOLD = 1.5;
 
   useEffect(() => {
     if (!userEmail) {
@@ -180,1433 +101,522 @@ export default function Index() {
     }
   }, [selectedEvent.id]);
 
-  const getBoothColor = (status: BoothStatus) => {
-    switch (status) {
-      case 'available':
-        return 'bg-booth-available hover:bg-booth-available/80';
-      case 'booked':
-        return 'bg-booth-booked hover:bg-booth-booked/80';
-      case 'unavailable':
-        return 'bg-booth-unavailable hover:bg-booth-unavailable/80';
-    }
-  };
-
-  const getStatusText = (status: BoothStatus) => {
-    switch (status) {
-      case 'available':
-        return 'Свободен';
-      case 'booked':
-        return 'Забронирован';
-      case 'unavailable':
-        return 'Недоступен';
-    }
-  };
-
   const stats = {
     total: booths.length,
     available: booths.filter(b => b.status === 'available').length,
     booked: booths.filter(b => b.status === 'booked').length,
   };
 
-  const snapToNeighbors = (id: string, x: number, y: number, width: number, height: number) => {
-    let snappedX = x;
-    let snappedY = y;
-
-    positions.forEach(pos => {
-      if (pos.id === id) return;
-
-      const right = x + width;
-      const bottom = y + height;
-      const posRight = pos.x + pos.width;
-      const posBottom = pos.y + pos.height;
-
-      if (Math.abs(y - pos.y) < SNAP_THRESHOLD) snappedY = pos.y;
-      if (Math.abs(bottom - posBottom) < SNAP_THRESHOLD) snappedY = pos.y + pos.height - height;
-      
-      if (Math.abs(x - pos.x) < SNAP_THRESHOLD) snappedX = pos.x;
-      if (Math.abs(right - posRight) < SNAP_THRESHOLD) snappedX = pos.x + pos.width - width;
-
-      if (Math.abs(right - pos.x) < SNAP_THRESHOLD && Math.abs(y - pos.y) < 5) snappedX = pos.x - width;
-      if (Math.abs(x - posRight) < SNAP_THRESHOLD && Math.abs(y - pos.y) < 5) snappedX = posRight;
-      
-      if (Math.abs(bottom - pos.y) < SNAP_THRESHOLD && Math.abs(x - pos.x) < 5) snappedY = pos.y - height;
-      if (Math.abs(y - posBottom) < SNAP_THRESHOLD && Math.abs(x - pos.x) < 5) snappedY = posBottom;
-    });
-
-    return { x: snappedX, y: snappedY };
-  };
-
-  const handleMouseDown = (e: React.MouseEvent, boothId: string) => {
-    if (!editMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const position = positions.find(p => p.id === boothId);
-    if (!position) return;
-    
-    const target = e.currentTarget as HTMLElement;
-    const rect = target.getBoundingClientRect();
-    
-    const offsetX = ((e.clientX - rect.left) / rect.width) * position.width;
-    const offsetY = ((e.clientY - rect.top) / rect.height) * position.height;
-    
-    setDragging(boothId);
-    setDragOffset({ x: offsetX, y: offsetY });
-  };
-
-  const handleResizeMouseDown = (e: React.MouseEvent, boothId: string, corner: 'se' | 'sw' | 'ne' | 'nw') => {
-    if (!editMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    
-    setResizing({ id: boothId, corner });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!editMode) return;
-    
-    const container = containerRef.current;
-    if (!container) return;
-    
-    const rect = container.getBoundingClientRect();
-    const containerWidth = 2400;
-    const containerHeight = 1200;
-    
-    const mouseXInContainer = (e.clientX - rect.left) / zoom;
-    const mouseYInContainer = (e.clientY - rect.top) / zoom;
-    
-    const mouseX = (mouseXInContainer / containerWidth) * 100;
-    const mouseY = (mouseYInContainer / containerHeight) * 100;
-
-    if (dragging) {
-      const position = positions.find(p => p.id === dragging);
-      if (!position) return;
-
-      let x = Math.max(0, Math.min(100 - position.width, mouseX - dragOffset.x));
-      let y = Math.max(0, Math.min(100 - position.height, mouseY - dragOffset.y));
-
-      if (snapEnabled) {
-        const snapped = snapToNeighbors(dragging, x, y, position.width, position.height);
-        x = snapped.x;
-        y = snapped.y;
-      }
-
-      setPositions(prev => prev.map(p => 
-        p.id === dragging ? { ...p, x, y } : p
-      ));
-    } else if (rotating && boothRotationStart) {
-      const position = positions.find(p => p.id === rotating);
-      if (!position) return;
-
-      const centerX = position.x + position.width / 2;
-      const centerY = position.y + position.height / 2;
-
-      const currentAngle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
-      const deltaAngle = currentAngle - boothRotationStart.angle;
-      const newRotation = boothRotationStart.rotation + deltaAngle;
-
-      setPositions(prev => prev.map(p => 
-        p.id === rotating ? { ...p, rotation: Math.round(newRotation) } : p
-      ));
-    } else if (resizing) {
-      const position = positions.find(p => p.id === resizing.id);
-      if (!position) return;
-
-      const newPos = { ...position };
-
-      switch (resizing.corner) {
-        case 'se':
-          newPos.width = Math.max(0.5, mouseX - position.x);
-          newPos.height = Math.max(0.5, mouseY - position.y);
-          break;
-        case 'sw':
-          const newWidth = Math.max(0.5, position.x + position.width - mouseX);
-          newPos.x = position.x + position.width - newWidth;
-          newPos.width = newWidth;
-          newPos.height = Math.max(0.5, mouseY - position.y);
-          break;
-        case 'ne':
-          newPos.width = Math.max(0.5, mouseX - position.x);
-          const newHeight = Math.max(0.5, position.y + position.height - mouseY);
-          newPos.y = position.y + position.height - newHeight;
-          newPos.height = newHeight;
-          break;
-        case 'nw':
-          const newW = Math.max(0.5, position.x + position.width - mouseX);
-          const newH = Math.max(0.5, position.y + position.height - mouseY);
-          newPos.x = position.x + position.width - newW;
-          newPos.y = position.y + position.height - newH;
-          newPos.width = newW;
-          newPos.height = newH;
-          break;
-      }
-
-      newPos.x = Math.max(0, Math.min(100 - newPos.width, newPos.x));
-      newPos.y = Math.max(0, Math.min(100 - newPos.height, newPos.y));
-
-      setPositions(prev => prev.map(p => 
-        p.id === resizing.id ? newPos : p
-      ));
+  const handleBoothClick = (booth: Booth) => {
+    if (!editMode) {
+      setSelectedBooth(booth);
     }
   };
 
-  const handleRotateMouseDown = (e: React.MouseEvent, boothId: string) => {
-    if (!editMode) return;
-    e.preventDefault();
-    e.stopPropagation();
-    
-    const container = containerRef.current;
-    if (!container) return;
-    
-    const position = positions.find(p => p.id === boothId);
-    if (!position) return;
-    
-    const rect = container.getBoundingClientRect();
-    const containerWidth = 2400;
-    const containerHeight = 1200;
-    
-    const mouseXInContainer = (e.clientX - rect.left) / zoom;
-    const mouseYInContainer = (e.clientY - rect.top) / zoom;
-    
-    const mouseX = (mouseXInContainer / containerWidth) * 100;
-    const mouseY = (mouseYInContainer / containerHeight) * 100;
-    
-    const centerX = position.x + position.width / 2;
-    const centerY = position.y + position.height / 2;
-    const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
-    
-    setBoothRotationStart({ angle, rotation: position.rotation || 0 });
-    setRotating(boothId);
+  const handleChangeStatus = (boothId: string, status: BoothStatus) => {
+    setBooths(booths.map(b => b.id === boothId ? { ...b, status } : b));
+    setSelectedBooth(prev => prev ? { ...prev, status } : null);
   };
 
-  const handleMouseUp = () => {
+  const handleDeleteBooth = (boothId: string) => {
+    setBooths(booths.filter(b => b.id !== boothId));
+    setPositions(positions.filter(p => p.id !== boothId));
+    setMapChanged(true);
+    toast({ title: 'Стенд удален', description: `Стенд ${boothId} удален с карты` });
+  };
+
+  const handleBoothMouseDown = (e: React.MouseEvent, id: string) => {
+    if (!editMode) return;
+    e.stopPropagation();
+    setDragging(id);
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const svgX = ((e.clientX - rect.left) / rect.width) * 100;
+    const svgY = ((e.clientY - rect.top) / rect.height) * 100;
+    const pos = positions.find(p => p.id === id);
+    if (pos) {
+      setDragOffset({ x: svgX - pos.x, y: svgY - pos.y });
+    }
+  };
+
+  const handleResizeMouseDown = (e: React.MouseEvent, id: string, corner: 'se' | 'sw' | 'ne' | 'nw') => {
+    if (!editMode) return;
+    e.stopPropagation();
+    setResizing({ id, corner });
+  };
+
+  const handleRotateMouseDown = (e: React.MouseEvent, id: string) => {
+    if (!editMode) return;
+    e.stopPropagation();
+    setRotating(id);
+    const container = containerRef.current;
+    const pos = positions.find(p => p.id === id);
+    if (!container || !pos) return;
+    const rect = container.getBoundingClientRect();
+    const centerX = pos.x + pos.width / 2;
+    const centerY = pos.y + pos.height / 2;
+    const svgX = ((e.clientX - rect.left) / rect.width) * 100;
+    const svgY = ((e.clientY - rect.top) / rect.height) * 100;
+    const angle = getAngle(centerX, centerY, svgX, svgY);
+    setBoothRotationStart({ angle, rotation: pos.rotation || 0 });
+  };
+
+  const handleMapMouseDown = (e: React.MouseEvent) => {
+    if (editMode) return;
+    if (e.button === 0) {
+      setIsMousePanning(true);
+      setPanStart({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMapMouseMove = (e: React.MouseEvent) => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    if (isMousePanning && !editMode) {
+      const dx = (e.clientX - panStart.x) / zoom;
+      const dy = (e.clientY - panStart.y) / zoom;
+      setPanOffset(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+      setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    if (!editMode) return;
+
+    const rect = container.getBoundingClientRect();
+    const svgX = ((e.clientX - rect.left) / rect.width) * 100;
+    const svgY = ((e.clientY - rect.top) / rect.height) * 100;
+
+    if (dragging) {
+      setPositions(positions.map(pos => {
+        if (pos.id === dragging) {
+          let newX = svgX - dragOffset.x;
+          let newY = svgY - dragOffset.y;
+          if (snapEnabled) {
+            const snapped = snapToNeighbors(pos.id, newX, newY, pos.width, pos.height, positions);
+            newX = snapped.x;
+            newY = snapped.y;
+          }
+          return { ...pos, x: newX, y: newY };
+        }
+        return pos;
+      }));
+      setMapChanged(true);
+    }
+
+    if (resizing) {
+      setPositions(positions.map(pos => {
+        if (pos.id === resizing.id) {
+          const newPos = { ...pos };
+          const corner = resizing.corner;
+          if (corner === 'se') {
+            newPos.width = Math.max(2, svgX - pos.x);
+            newPos.height = Math.max(2, svgY - pos.y);
+          } else if (corner === 'sw') {
+            const newWidth = Math.max(2, pos.x + pos.width - svgX);
+            newPos.x = pos.x + pos.width - newWidth;
+            newPos.width = newWidth;
+            newPos.height = Math.max(2, svgY - pos.y);
+          } else if (corner === 'ne') {
+            newPos.width = Math.max(2, svgX - pos.x);
+            const newHeight = Math.max(2, pos.y + pos.height - svgY);
+            newPos.y = pos.y + pos.height - newHeight;
+            newPos.height = newHeight;
+          } else if (corner === 'nw') {
+            const newWidth = Math.max(2, pos.x + pos.width - svgX);
+            const newHeight = Math.max(2, pos.y + pos.height - svgY);
+            newPos.x = pos.x + pos.width - newWidth;
+            newPos.y = pos.y + pos.height - newHeight;
+            newPos.width = newWidth;
+            newPos.height = newHeight;
+          }
+          return newPos;
+        }
+        return pos;
+      }));
+      setMapChanged(true);
+    }
+
+    if (rotating && boothRotationStart) {
+      setPositions(positions.map(pos => {
+        if (pos.id === rotating) {
+          const centerX = pos.x + pos.width / 2;
+          const centerY = pos.y + pos.height / 2;
+          const currentAngle = getAngle(centerX, centerY, svgX, svgY);
+          const deltaAngle = currentAngle - boothRotationStart.angle;
+          const newRotation = (boothRotationStart.rotation + deltaAngle) % 360;
+          return { ...pos, rotation: newRotation };
+        }
+        return pos;
+      }));
+      setMapChanged(true);
+    }
+
+    if (draggingGrid) {
+      setGrid(prev => ({
+        ...prev,
+        x: svgX - prev.width / 2,
+        y: svgY - prev.height / 2,
+      }));
+    }
+
+    if (resizingGrid) {
+      setGrid(prev => {
+        const newGrid = { ...prev };
+        const corner = resizingGrid;
+        if (corner === 'se') {
+          newGrid.width = Math.max(5, svgX - prev.x);
+          newGrid.height = Math.max(5, svgY - prev.y);
+        } else if (corner === 'sw') {
+          const newWidth = Math.max(5, prev.x + prev.width - svgX);
+          newGrid.x = prev.x + prev.width - newWidth;
+          newGrid.width = newWidth;
+          newGrid.height = Math.max(5, svgY - prev.y);
+        } else if (corner === 'ne') {
+          newGrid.width = Math.max(5, svgX - prev.x);
+          const newHeight = Math.max(5, prev.y + prev.height - svgY);
+          newGrid.y = prev.y + prev.height - newHeight;
+          newGrid.height = newHeight;
+        } else if (corner === 'nw') {
+          const newWidth = Math.max(5, prev.x + prev.width - svgX);
+          const newHeight = Math.max(5, prev.y + prev.height - svgY);
+          newGrid.x = prev.x + prev.width - newWidth;
+          newGrid.y = prev.y + prev.height - newHeight;
+          newGrid.width = newWidth;
+          newGrid.height = newHeight;
+        }
+        return newGrid;
+      });
+    }
+
+    if (rotatingGrid && rotationStart) {
+      const centerX = grid.x + grid.width / 2;
+      const centerY = grid.y + grid.height / 2;
+      const currentAngle = getAngle(centerX, centerY, svgX, svgY);
+      const deltaAngle = currentAngle - rotationStart.angle;
+      const newRotation = (rotationStart.rotation + deltaAngle) % 360;
+      setGrid(prev => ({ ...prev, rotation: newRotation }));
+    }
+  };
+
+  const handleMapMouseUp = () => {
     setDragging(null);
     setResizing(null);
     setRotating(null);
+    setBoothRotationStart(null);
     setDraggingGrid(false);
     setResizingGrid(null);
     setRotatingGrid(false);
     setRotationStart(null);
-    setBoothRotationStart(null);
   };
 
-  useEffect(() => {
-    if (dragging || rotating || draggingGrid || resizingGrid || rotatingGrid) {
-      window.addEventListener('mouseup', handleMouseUp as any);
-      return () => window.removeEventListener('mouseup', handleMouseUp as any);
-    }
-  }, [dragging, rotating, draggingGrid, resizingGrid, rotatingGrid]);
+  const handleWheel = (e: React.WheelEvent) => {
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setZoom(prev => Math.max(0.5, Math.min(3, prev * delta)));
+  };
 
-  const handleGridMouseMove = (e: React.MouseEvent) => {
-    if (!gridMode) return;
+  const handleSaveMap = async () => {
+    setLoading(true);
+    localStorage.setItem(`booth-positions-${selectedEvent.id}`, JSON.stringify(positions));
     
+    try {
+      await api.saveBooths(selectedEvent.id, booths, positions);
+      toast({ title: 'Карта сохранена', description: 'Все изменения успешно сохранены в базе данных' });
+    } catch (error) {
+      toast({ 
+        title: 'Ошибка сохранения', 
+        description: 'Не удалось сохранить в базу данных',
+        variant: 'destructive'
+      });
+    }
+    
+    setMapChanged(false);
+    setLoading(false);
+  };
+
+  const handleExportPDF = async () => {
     const container = containerRef.current;
     if (!container) return;
-    
-    const rect = container.getBoundingClientRect();
-    const containerWidth = 2400;
-    const containerHeight = 1200;
-    
-    const mouseXInContainer = (e.clientX - rect.left) / zoom;
-    const mouseYInContainer = (e.clientY - rect.top) / zoom;
-    
-    const mouseX = (mouseXInContainer / containerWidth) * 100;
-    const mouseY = (mouseYInContainer / containerHeight) * 100;
 
-    if (draggingGrid) {
-      const newX = Math.max(0, Math.min(100 - grid.width, mouseX - dragOffset.x));
-      const newY = Math.max(0, Math.min(100 - grid.height, mouseY - dragOffset.y));
-      setGrid({ ...grid, x: newX, y: newY });
-    } else if (resizingGrid === 'se') {
-      const newWidth = Math.max(5, mouseX - grid.x);
-      const newHeight = Math.max(5, mouseY - grid.y);
-      setGrid({ ...grid, width: Math.min(100 - grid.x, newWidth), height: Math.min(100 - grid.y, newHeight) });
-    } else if (rotatingGrid && rotationStart) {
-      const centerX = grid.x + grid.width / 2;
-      const centerY = grid.y + grid.height / 2;
-      const currentAngle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
-      const deltaAngle = currentAngle - rotationStart.angle;
-      const newRotation = rotationStart.rotation + deltaAngle;
-      setGrid({ ...grid, rotation: Math.round(newRotation) });
+    setLoading(true);
+    toast({ title: 'Экспорт в PDF', description: 'Начинаем экспорт карты...' });
+
+    try {
+      const canvas = await html2canvas(container, { scale: 2 });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({orientation: 'landscape', unit: 'mm', format: 'a4'});
+      const imgWidth = 297;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+      pdf.save(`${selectedEvent.name}-карта.pdf`);
+      toast({ title: 'PDF создан', description: 'Карта успешно экспортирована' });
+    } catch (error) {
+      toast({ title: 'Ошибка', description: 'Не удалось создать PDF', variant: 'destructive' });
     }
+
+    setLoading(false);
   };
 
-  const loadSheetData = async (silent = false) => {
-    if (!sheetUrl.trim()) {
-      if (!silent) {
-        toast({
-          title: 'Ошибка',
-          description: 'Введите URL Google Таблицы',
-          variant: 'destructive',
-        });
-      }
+  const handleUploadMap = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      setSelectedEvent(prev => ({
+        ...prev,
+        mapUrl: dataUrl
+      }));
+      localStorage.setItem(`map-url-${selectedEvent.id}`, dataUrl);
+      setMapChanged(true);
+      toast({ title: 'Карта загружена', description: 'Новая карта успешно загружена' });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSyncSheet = async () => {
+    if (!sheetUrl) {
+      toast({ title: 'Ошибка', description: 'Не указана ссылка на таблицу', variant: 'destructive' });
       return;
     }
-
-    if (!silent) setLoading(true);
-    try {
-      const response = await fetch('https://functions.poehali.dev/0a047b83-702c-4547-ae04-ff2dd383ee27', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheetUrl }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка загрузки данных');
-      }
-
-      const data = await response.json();
-      setBooths(data.booths);
-      
-      if (data.mapUrl) {
-        setSelectedEvent(prev => ({
-          ...prev,
-          mapUrl: data.mapUrl
-        }));
-      }
-      
-      localStorage.setItem(`sheet-url-${selectedEvent.id}`, sheetUrl);
-      setShowSheetDialog(false);
+    setLoading(true);
+    toast({ title: 'Синхронизация', description: 'Загружаем данные из таблицы...' });
+    setTimeout(() => {
+      setLoading(false);
       setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
-      
-      if (!silent) {
-        toast({
-          title: 'Данные загружены',
-          description: `Синхронизировано ${data.booths.length} стендов${data.mapUrl ? ' и карта обновлена' : ''}`,
-        });
-      }
-    } catch (error) {
-      if (!silent) {
-        toast({
-          title: 'Ошибка',
-          description: error instanceof Error ? error.message : 'Не удалось загрузить данные из таблицы',
-          variant: 'destructive',
-        });
-      }
-    } finally {
-      if (!silent) setLoading(false);
-    }
+      toast({ title: 'Синхронизация завершена', description: 'Данные успешно загружены' });
+    }, 2000);
   };
 
-  useEffect(() => {
-    if (autoSync && sheetUrl.trim()) {
-      syncIntervalRef.current = setInterval(() => {
-        loadSheetData(true);
-      }, 30000);
+  const handleToggleAutoSync = () => {
+    if (!autoSync) {
+      if (!sheetUrl) {
+        toast({ title: 'Ошибка', description: 'Сначала настройте Google Таблицу', variant: 'destructive' });
+        return;
+      }
+      syncIntervalRef.current = setInterval(handleSyncSheet, 300000);
+      toast({ title: 'Авто-синхронизация включена', description: 'Данные будут обновляться каждые 5 минут' });
     } else {
       if (syncIntervalRef.current) {
         clearInterval(syncIntervalRef.current);
         syncIntervalRef.current = null;
       }
+      toast({ title: 'Авто-синхронизация выключена' });
     }
+    setAutoSync(!autoSync);
+  };
 
-    return () => {
-      if (syncIntervalRef.current) {
-        clearInterval(syncIntervalRef.current);
-      }
-    };
-  }, [autoSync, sheetUrl]);
+  const handleSaveSheetUrl = (url: string) => {
+    setSheetUrl(url);
+    localStorage.setItem(`sheet-url-${selectedEvent.id}`, url);
+    toast({ title: 'Настройки сохранены', description: 'Ссылка на таблицу обновлена' });
+  };
 
-  const saveToDatabase = async () => {
-    if (!userEmail) {
-      setShowLoginDialog(true);
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const boothsData = positions.map(pos => {
-        const booth = booths.find(b => b.id === pos.id);
-        return {
-          ...pos,
-          status: booth?.status || 'available',
-          company: booth?.company,
-          contactPerson: booth?.contact,
-          phone: booth?.contact,
-          email: booth?.contact,
-          notes: `${booth?.price || ''} ${booth?.size || ''}`.trim(),
-        };
-      });
-
-      await api.saveBooths(parseInt(selectedEvent.id), boothsData);
-      
-      toast({
-        title: 'Данные сохранены',
-        description: 'Стенды успешно сохранены в базе данных',
-      });
-    } catch (error) {
-      toast({
-        title: 'Ошибка сохранения',
-        description: 'Не удалось сохранить данные в базу',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
+  const handleToggleGrid = () => {
+    if (gridMode) {
+      setGridMode(false);
+      setEditingGrid(false);
+      setGridCellAssignments({});
+    } else {
+      setGridMode(true);
+      setEditingGrid(true);
     }
   };
 
-  const savePositions = () => {
-    localStorage.setItem(`booth-positions-${selectedEvent.id}`, JSON.stringify(positions));
-    toast({
-      title: 'Позиции сохранены',
-      description: 'Разметка стендов успешно сохранена',
-    });
-    setEditMode(false);
-    saveToDatabase();
-  };
-
-  const saveMapUrl = () => {
-    localStorage.setItem(`map-url-${selectedEvent.id}`, selectedEvent.mapUrl);
-    setMapChanged(false);
-    toast({
-      title: 'Карта сохранена',
-      description: 'URL карты сохранён в localStorage',
-    });
-  };
-
-  const autoDetectBooths = async () => {
-    setLoading(true);
-    toast({
-      title: 'Автоопределение стендов',
-      description: 'Анализируем карту...',
-    });
-
-    try {
-      const response = await fetch('https://functions.poehali.dev/c2e9e565-4a01-4b37-8c5b-7853ae94e5bd', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          image: selectedEvent.mapUrl,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Ошибка определения стендов');
-      }
-
-      const data = await response.json();
-      
-      const detectedPositions = data.booths.map((booth: any) => ({
-        id: booth.id,
-        x: booth.x,
-        y: booth.y,
-        width: booth.width,
-        height: booth.height,
-      }));
-
-      setPositions(detectedPositions);
-
-      toast({
-        title: 'Стенды определены',
-        description: `Найдено ${data.count} стендов. Проверьте и скорректируйте позиции.`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: error instanceof Error ? error.message : 'Не удалось определить стенды',
-        variant: 'destructive',
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetPositions = () => {
-    setPositions(defaultPositions);
-    localStorage.removeItem(`booth-positions-${selectedEvent.id}`);
-    toast({
-      title: 'Позиции сброшены',
-      description: 'Разметка возвращена к настройкам по умолчанию',
-    });
-  };
-
-  const placeBoothsOnGrid = () => {
+  const handleApplyGrid = () => {
+    const newBooths: Booth[] = [];
+    const newPositions: BoothPosition[] = [];
     const cellWidth = grid.width / grid.cols;
     const cellHeight = grid.height / grid.rows;
-    const updatedPositions = [...positions];
-    
-    const assignedBoothIds = Object.values(gridCellAssignments);
-    
+
     Object.entries(gridCellAssignments).forEach(([cellIndexStr, boothId]) => {
       const cellIndex = parseInt(cellIndexStr);
       const row = Math.floor(cellIndex / grid.cols);
       const col = cellIndex % grid.cols;
-      
-      const cellX = grid.x + (col * cellWidth);
-      const cellY = grid.y + (row * cellHeight);
-      
-      const existingIndex = updatedPositions.findIndex(p => p.id === boothId);
-      
-      if (existingIndex !== -1) {
-        updatedPositions[existingIndex] = {
-          ...updatedPositions[existingIndex],
-          x: cellX,
-          y: cellY,
-          width: cellWidth,
-          height: cellHeight,
-          rotation: grid.rotation
-        };
-      } else {
-        updatedPositions.push({
-          id: boothId,
-          x: cellX,
-          y: cellY,
-          width: cellWidth,
-          height: cellHeight,
-          rotation: grid.rotation
-        });
-      }
+      const x = grid.x + col * cellWidth;
+      const y = grid.y + row * cellHeight;
+
+      newBooths.push({ id: boothId, status: 'available' });
+      newPositions.push({
+        id: boothId,
+        x,
+        y,
+        width: cellWidth,
+        height: cellHeight,
+        rotation: grid.rotation,
+      });
     });
-    
-    setPositions(updatedPositions);
+
+    setBooths(prev => [...prev, ...newBooths]);
+    setPositions(prev => [...prev, ...newPositions]);
     setGridMode(false);
+    setEditingGrid(false);
     setGridCellAssignments({});
-    toast({
-      title: 'Стенды размещены',
-      description: `Размещено ${assignedBoothIds.length} стендов по сетке`,
-    });
+    setMapChanged(true);
+    toast({ title: 'Сетка применена', description: `Создано ${newBooths.length} стендов` });
   };
 
-  const handleMapUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      toast({
-        title: 'Ошибка',
-        description: 'Выберите файл изображения',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setLoading(true);
-    toast({
-      title: 'Загрузка изображения',
-      description: 'Изображение сохраняется в проект...',
-    });
-
-    try {
-      const reader = new FileReader();
-      
-      reader.onload = () => {
-        const dataUrl = reader.result as string;
-        
-        setSelectedEvent(prev => ({
-          ...prev,
-          mapUrl: dataUrl
-        }));
-
-        setMapChanged(true);
-        setShowMapUploadDialog(false);
-
-        toast({
-          title: 'Изображение загружено',
-          description: 'Нажмите "Сохранить карту" чтобы применить изменения',
-        });
-        
-        setLoading(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      };
-
-      reader.onerror = () => {
-        toast({
-          title: 'Ошибка',
-          description: 'Не удалось прочитать файл',
-          variant: 'destructive',
-        });
-        setLoading(false);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      };
-
-      reader.readAsDataURL(file);
-    } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось загрузить изображение',
-        variant: 'destructive',
-      });
-      setLoading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
+  const handleCancelGrid = () => {
+    setGridMode(false);
+    setEditingGrid(false);
+    setGridCellAssignments({});
   };
 
-  const exportToPDF = async () => {
-    const mapElement = containerRef.current;
-    if (!mapElement) return;
+  const handleGridMouseDown = (e: React.MouseEvent) => {
+    if (!editingGrid) return;
+    e.stopPropagation();
+    setDraggingGrid(true);
+  };
 
-    toast({
-      title: 'Экспорт в PDF',
-      description: 'Подготовка документа...',
-    });
+  const handleGridResizeMouseDown = (e: React.MouseEvent, corner: 'se' | 'sw' | 'ne' | 'nw') => {
+    if (!editingGrid) return;
+    e.stopPropagation();
+    setResizingGrid(corner);
+  };
 
-    try {
-      const headerDiv = document.createElement('div');
-      headerDiv.style.cssText = 'position: absolute; left: -9999px; width: 800px; padding: 20px; font-family: Arial, sans-serif; background: white;';
-      headerDiv.innerHTML = `
-        <h1 style="font-size: 32px; margin: 0 0 10px 0; text-align: center; font-weight: bold;">${selectedEvent.name}</h1>
-        <p style="font-size: 18px; margin: 0; text-align: center; color: #666;">${selectedEvent.date} • ${selectedEvent.location}</p>
-      `;
-      document.body.appendChild(headerDiv);
-      
-      const headerCanvas = await html2canvas(headerDiv, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-      });
-      document.body.removeChild(headerDiv);
+  const handleGridRotateMouseDown = (e: React.MouseEvent) => {
+    if (!editingGrid) return;
+    e.stopPropagation();
+    setRotatingGrid(true);
+    const container = containerRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    const centerX = grid.x + grid.width / 2;
+    const centerY = grid.y + grid.height / 2;
+    const svgX = ((e.clientX - rect.left) / rect.width) * 100;
+    const svgY = ((e.clientY - rect.top) / rect.height) * 100;
+    const angle = getAngle(centerX, centerY, svgX, svgY);
+    setRotationStart({ angle, rotation: grid.rotation });
+  };
 
-      const clone = mapElement.cloneNode(true) as HTMLElement;
-      clone.style.transform = 'none';
-      clone.style.position = 'absolute';
-      clone.style.left = '-9999px';
-      clone.style.top = '0';
-      clone.style.width = '2400px';
-      clone.style.height = '1200px';
-      document.body.appendChild(clone);
-      
-      const mapCanvas = await html2canvas(clone, {
-        scale: 1,
-        backgroundColor: '#ffffff',
-        logging: false,
-        useCORS: true,
-        allowTaint: true,
-        width: 2400,
-        height: 1200,
-      });
-
-      document.body.removeChild(clone);
-
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const headerImgData = headerCanvas.toDataURL('image/png');
-      const headerWidth = 190;
-      const headerHeight = (headerCanvas.height * headerWidth) / headerCanvas.width;
-      pdf.addImage(headerImgData, 'PNG', 10, 10, headerWidth, headerHeight);
-      
-      const mapImgData = mapCanvas.toDataURL('image/jpeg', 0.7);
-      const mapWidth = 190;
-      const mapHeight = (mapCanvas.height * mapWidth) / mapCanvas.width;
-      const mapYPosition = 10 + headerHeight + 5;
-      pdf.addImage(mapImgData, 'JPEG', 10, mapYPosition, mapWidth, mapHeight);
-      
-      let yPosition = mapYPosition + mapHeight + 10;
-      
-      const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
-      
-      if (bookedBooths.length > 0) {
-        if (yPosition > 250) {
-          pdf.addPage();
-          yPosition = 15;
-        }
-        
-        const listDiv = document.createElement('div');
-        listDiv.style.cssText = 'position: absolute; left: -9999px; width: 800px; padding: 10px; font-family: Arial, sans-serif; background: white;';
-        listDiv.innerHTML = `
-          <h2 style="font-size: 20px; margin: 0 0 10px 0; font-weight: bold;">Забронированные стенды:</h2>
-          ${bookedBooths.map(booth => `<p style="font-size: 16px; margin: 5px 0;">${booth.id} - ${booth.company}</p>`).join('')}
-        `;
-        document.body.appendChild(listDiv);
-        
-        const listCanvas = await html2canvas(listDiv, {
-          scale: 2,
-          backgroundColor: '#ffffff',
-        });
-        document.body.removeChild(listDiv);
-        
-        const listImgData = listCanvas.toDataURL('image/png');
-        const listWidth = 190;
-        const listHeight = (listCanvas.height * listWidth) / listCanvas.width;
-        
-        if (yPosition + listHeight > 280) {
-          pdf.addPage();
-          yPosition = 15;
-        }
-        
-        pdf.addImage(listImgData, 'PNG', 10, yPosition, listWidth, listHeight);
-      }
-      
-      pdf.save(`${selectedEvent.name}_карта_стендов.pdf`);
-      
-      toast({
-        title: 'PDF сохранен',
-        description: 'Карта стендов успешно экспортирована',
-      });
-    } catch (error) {
-      toast({
-        title: 'Ошибка',
-        description: 'Не удалось создать PDF',
-        variant: 'destructive',
-      });
+  const handleCellClick = (cellIndex: number) => {
+    if (!editingGrid) return;
+    const currentBoothId = gridCellAssignments[cellIndex];
+    if (currentBoothId) {
+      const newAssignments = { ...gridCellAssignments };
+      delete newAssignments[cellIndex];
+      setGridCellAssignments(newAssignments);
+    } else {
+      const maxBoothNumber = Math.max(
+        ...booths.map(b => {
+          const match = b.id.match(/\d+$/);
+          return match ? parseInt(match[0]) : 0;
+        }),
+        0
+      );
+      const newBoothId = `S${maxBoothNumber + Object.keys(gridCellAssignments).length + 1}`;
+      setGridCellAssignments({ ...gridCellAssignments, [cellIndex]: newBoothId });
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <header className="mb-6 animate-fade-in">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Icon name="CalendarDays" size={32} className="text-primary" />
-              <h1 className="text-4xl font-bold text-gray-900">Бронирование стендов</h1>
-            </div>
-            <Button onClick={() => setShowSheetDialog(true)} variant="outline">
-              <Icon name="Sheet" size={16} className="mr-2" />
-              Синхронизация с Google Таблицами
-            </Button>
+    <div className="min-h-screen bg-gray-100">
+      <Header onLoginClick={() => setShowLoginDialog(true)} />
+
+      <div className="container mx-auto p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-1 space-y-4">
+            <EventSelector
+              events={events}
+              selectedEvent={selectedEvent}
+              onSelectEvent={setSelectedEvent}
+            />
+            <Statistics
+              total={stats.total}
+              available={stats.available}
+              booked={stats.booked}
+            />
+            <ControlPanel
+              editMode={editMode}
+              gridMode={gridMode}
+              snapEnabled={snapEnabled}
+              autoSync={autoSync}
+              lastSyncTime={lastSyncTime}
+              mapChanged={mapChanged}
+              onToggleEdit={() => setEditMode(!editMode)}
+              onToggleGrid={handleToggleGrid}
+              onToggleSnap={() => setSnapEnabled(!snapEnabled)}
+              onToggleAutoSync={handleToggleAutoSync}
+              onSaveMap={handleSaveMap}
+              onExportPDF={handleExportPDF}
+              onUploadMap={handleUploadMap}
+              onSyncSheet={handleSyncSheet}
+              onSheetSettings={() => setShowSheetDialog(true)}
+            />
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-600">Мероприятие:</label>
-            <select
-              value={selectedEvent.id}
-              onChange={(e) => {
-                const event = events.find(ev => ev.id === e.target.value);
-                if (event) setSelectedEvent(event);
-              }}
-              className="px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 font-medium focus:border-primary focus:outline-none transition-colors"
-            >
-              {events.map(event => (
-                <option key={event.id} value={event.id}>
-                  {event.name} • {event.date} • {event.location}
-                </option>
-              ))}
-            </select>
-            
-            {userEmail ? (
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-sm text-gray-600">{userEmail}</span>
-                <Button onClick={logout} variant="outline" size="sm">
-                  <Icon name="LogOut" size={16} className="mr-2" />
-                  Выйти
-                </Button>
-              </div>
-            ) : (
-              <Button onClick={() => setShowLoginDialog(true)} size="sm" className="ml-auto">
-                <Icon name="LogIn" size={16} className="mr-2" />
-                Войти
-              </Button>
-            )}
+          <div className="lg:col-span-3">
+            <MapCanvas
+              containerRef={containerRef}
+              selectedEvent={selectedEvent}
+              booths={booths}
+              positions={positions}
+              zoom={zoom}
+              panOffset={panOffset}
+              editMode={editMode}
+              gridMode={gridMode}
+              grid={grid}
+              gridCellAssignments={gridCellAssignments}
+              editingGrid={editingGrid}
+              dragging={dragging}
+              resizing={resizing}
+              rotating={rotating}
+              isPanning={isMousePanning}
+              onBoothClick={handleBoothClick}
+              onBoothMouseDown={handleBoothMouseDown}
+              onResizeMouseDown={handleResizeMouseDown}
+              onRotateMouseDown={handleRotateMouseDown}
+              onMapMouseDown={handleMapMouseDown}
+              onMapMouseMove={handleMapMouseMove}
+              onMapMouseUp={handleMapMouseUp}
+              onWheel={handleWheel}
+              onGridMouseDown={handleGridMouseDown}
+              onGridResizeMouseDown={handleGridResizeMouseDown}
+              onGridRotateMouseDown={handleGridRotateMouseDown}
+              onCellClick={handleCellClick}
+            />
           </div>
-        </header>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
-          <Card className="p-6 animate-scale-in bg-white border-2 border-primary/20">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-primary/10 rounded-lg">
-                <Icon name="Grid3x3" size={24} className="text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Всего стендов</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 animate-scale-in bg-white border-2 border-booth-available/20" style={{ animationDelay: '0.1s' }}>
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-booth-available/10 rounded-lg">
-                <Icon name="CheckCircle" size={24} className="text-booth-available" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Свободно</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.available}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 animate-scale-in bg-white border-2 border-booth-booked/20" style={{ animationDelay: '0.2s' }}>
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-booth-booked/10 rounded-lg">
-                <Icon name="Lock" size={24} className="text-booth-booked" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Забронировано</p>
-                <p className="text-3xl font-bold text-gray-900">{stats.booked}</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6 animate-scale-in bg-white border-2 border-gray-200" style={{ animationDelay: '0.3s' }}>
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gray-100 rounded-lg">
-                <Icon name="Percent" size={24} className="text-gray-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 font-medium">Заполненность</p>
-                <p className="text-3xl font-bold text-gray-900">{Math.round((stats.booked / stats.total) * 100)}%</p>
-              </div>
-            </div>
-          </Card>
         </div>
-
-        <Card className="p-8 bg-white shadow-xl animate-fade-in">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Интерактивная карта павильона</h2>
-            <div className="flex gap-4 items-center">
-              {!editMode && (
-                <>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-booth-available"></div>
-                    <span className="text-sm text-gray-600">Свободен</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-booth-booked"></div>
-                    <span className="text-sm text-gray-600">Забронирован</span>
-                  </div>
-                </>
-              )}
-              {gridMode ? (
-                <div className="flex gap-2">
-                  <div className="flex gap-2 items-center border-r pr-2">
-                    <label className="text-sm">Ряды:</label>
-                    <input 
-                      type="number" 
-                      value={grid.rows} 
-                      onChange={(e) => setGrid({...grid, rows: Math.max(1, parseInt(e.target.value) || 1)})}
-                      className="w-16 px-2 py-1 border rounded text-sm"
-                      min="1"
-                    />
-                    <label className="text-sm">Колонки:</label>
-                    <input 
-                      type="number" 
-                      value={grid.cols} 
-                      onChange={(e) => setGrid({...grid, cols: Math.max(1, parseInt(e.target.value) || 1)})}
-                      className="w-16 px-2 py-1 border rounded text-sm"
-                      min="1"
-                    />
-                  </div>
-                  <div className="text-xs text-gray-600 border-r pr-2">
-                    Стендов: {booths.length}
-                  </div>
-                  <Button onClick={placeBoothsOnGrid} size="sm" className="bg-booth-available hover:bg-booth-available/80">
-                    <Icon name="Check" size={16} className="mr-2" />
-                    Применить сетку
-                  </Button>
-                  <Button onClick={() => {
-                    setGridMode(false);
-                    setGridCellAssignments({});
-                  }} variant="outline" size="sm">
-                    Закрыть
-                  </Button>
-                </div>
-              ) : editMode ? (
-                <div className="flex gap-2">
-                  <Button 
-                    onClick={() => setSnapEnabled(!snapEnabled)} 
-                    variant={snapEnabled ? "default" : "outline"} 
-                    size="sm"
-                    title={snapEnabled ? "Прилипание включено" : "Прилипание выключено"}
-                  >
-                    <Icon name="Magnet" size={16} className="mr-2" />
-                    {snapEnabled ? "Прилипание" : "Свободно"}
-                  </Button>
-                  <Button onClick={() => {
-                    setGridCellAssignments({});
-                    setGridMode(true);
-                  }} variant="outline" size="sm">
-                    <Icon name="Grid3x3" size={16} className="mr-2" />
-                    Сетка
-                  </Button>
-                  <Button onClick={autoDetectBooths} variant="outline" size="sm" disabled={loading}>
-                    <Icon name="Sparkles" size={16} className="mr-2" />
-                    Автоопределение
-                  </Button>
-                  <Button onClick={savePositions} size="sm" className="bg-booth-available hover:bg-booth-available/80">
-                    <Icon name="Save" size={16} className="mr-2" />
-                    Сохранить
-                  </Button>
-                  <Button onClick={resetPositions} variant="outline" size="sm">
-                    <Icon name="RotateCcw" size={16} className="mr-2" />
-                    Сбросить
-                  </Button>
-                  <Button onClick={() => setEditMode(false)} variant="outline" size="sm">
-                    Отменить
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex gap-2 items-center">
-                  <div className="flex items-center gap-2 mr-2">
-                    <Button 
-                      onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} 
-                      variant="outline" 
-                      size="sm"
-                      className="px-2"
-                    >
-                      <Icon name="ZoomOut" size={16} />
-                    </Button>
-                    <span className="text-sm text-gray-600 font-medium min-w-[60px] text-center">
-                      {Math.round(zoom * 100)}%
-                    </span>
-                    <Button 
-                      onClick={() => setZoom(Math.min(7, zoom + 0.1))} 
-                      variant="outline" 
-                      size="sm"
-                      className="px-2"
-                    >
-                      <Icon name="ZoomIn" size={16} />
-                    </Button>
-                    <Button 
-                      onClick={() => { setZoom(1); setPanOffset({ x: 0, y: 0 }); }} 
-                      variant="outline" 
-                      size="sm"
-                      title="Сбросить масштаб"
-                    >
-                      <Icon name="Maximize2" size={16} />
-                    </Button>
-                  </div>
-                  <Button onClick={() => setShowMapUploadDialog(true)} variant="outline" size="sm">
-                    <Icon name="Upload" size={16} className="mr-2" />
-                    Загрузить карту
-                  </Button>
-                  {mapChanged && (
-                    <Button onClick={saveMapUrl} size="sm" className="bg-booth-available hover:bg-booth-available/80">
-                      <Icon name="Save" size={16} className="mr-2" />
-                      Сохранить карту
-                    </Button>
-                  )}
-                  <Button onClick={exportToPDF} variant="outline" size="sm">
-                    <Icon name="FileDown" size={16} className="mr-2" />
-                    Экспорт в PDF
-                  </Button>
-                  <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
-                    <Icon name="Edit" size={16} className="mr-2" />
-                    Настроить разметку
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {gridMode && (
-            <div className="mb-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
-              <div className="flex items-start gap-3">
-                <Icon name="Grid3x3" size={20} className="text-primary mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Режим сетки</p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    • Перетаскивайте сетку для позиционирования<br/>
-                    • Тяните за правый нижний угол для изменения размера<br/>
-                    • Используйте зелёный круг сверху для вращения (шаг 15°)<br/>
-                    • Настройте количество рядов и колонок<br/>
-                    • Нажмите "Разместить стенды" для автоматического размещения
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {editMode && !gridMode && (
-            <div className="mb-4 p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
-              <div className="flex items-start gap-3">
-                <Icon name="Info" size={20} className="text-primary mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">Режим редактирования</p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    • Перетаскивайте стенды для позиционирования (автоматическое прилипание)<br/>
-                    • Тяните за углы для изменения размера стенда<br/>
-                    • Нажмите "Сохранить" для применения изменений
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div 
-            className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-hidden"
-            style={{ height: '800px' }}
-          >
-            <div 
-              ref={containerRef}
-              className="relative w-full select-none" 
-              style={{ 
-                width: '2400px',
-                height: '1200px',
-                transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
-                transformOrigin: '0 0',
-                cursor: isPanning ? 'grabbing' : isMousePanning ? 'grab' : 'default'
-              }}
-              onMouseDown={(e) => {
-                if (e.button === 0 && e.target === e.currentTarget) {
-                  setIsMousePanning(true);
-                  setDragOffset({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y });
-                }
-              }}
-              onMouseMove={(e) => {
-                if (isMousePanning) {
-                  setIsPanning(true);
-                  setPanOffset({
-                    x: e.clientX - dragOffset.x,
-                    y: e.clientY - dragOffset.y
-                  });
-                }
-                if (gridMode) {
-                  handleGridMouseMove(e);
-                } else if (editMode) {
-                  handleMouseMove(e);
-                }
-              }}
-              onMouseUp={handleMouseUp}
-              onWheel={(e) => {
-                e.preventDefault();
-                const container = containerRef.current?.parentElement;
-                if (!container) return;
-
-                const rect = container.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-
-                const delta = e.deltaY > 0 ? -0.15 : 0.15;
-                const newZoom = Math.max(0.5, Math.min(7, zoom + delta));
-
-                const pointX = (mouseX - panOffset.x) / zoom;
-                const pointY = (mouseY - panOffset.y) / zoom;
-
-                const newPanX = mouseX - pointX * newZoom;
-                const newPanY = mouseY - pointY * newZoom;
-
-                setZoom(newZoom);
-                setPanOffset({ x: newPanX, y: newPanY });
-              }}
-            >
-              <img 
-                src={selectedEvent.mapUrl} 
-                alt="План павильона" 
-                className="w-full h-full object-contain pointer-events-none"
-              />
-
-              {gridMode && (
-                <div
-                  className="absolute border-4 border-primary bg-primary/10 cursor-move"
-                  style={{
-                    left: `${grid.x}%`,
-                    top: `${grid.y}%`,
-                    width: `${grid.width}%`,
-                    height: `${grid.height}%`,
-                    transform: `rotate(${grid.rotation}deg)`,
-                    transformOrigin: 'center',
-                  }}
-                  onMouseDown={(e) => {
-                    const container = containerRef.current;
-                    if (!container) return;
-                    
-                    const rect = container.getBoundingClientRect();
-                    const containerWidth = 2400;
-                    const containerHeight = 1200;
-                    
-                    const mouseXInContainer = (e.clientX - rect.left) / zoom;
-                    const mouseYInContainer = (e.clientY - rect.top) / zoom;
-                    
-                    const mouseX = (mouseXInContainer / containerWidth) * 100;
-                    const mouseY = (mouseYInContainer / containerHeight) * 100;
-                    
-                    setDragOffset({ x: mouseX - grid.x, y: mouseY - grid.y });
-                    setDraggingGrid(true);
-                  }}
-                >
-                  <div className="absolute inset-0 grid" style={{
-                    gridTemplateRows: `repeat(${grid.rows}, 1fr)`,
-                    gridTemplateColumns: `repeat(${grid.cols}, 1fr)`,
-                    gap: '0px',
-                    padding: '0px'
-                  }}>
-                    {Array.from({ length: grid.rows * grid.cols }).map((_, i) => {
-                      const assignedBoothId = gridCellAssignments[i];
-                      const assignedBooth = assignedBoothId ? booths.find(b => b.id === assignedBoothId) : null;
-                      const placedBoothIds = positions.map(p => p.id);
-                      const availableBooths = booths.filter(b => 
-                        (!Object.values(gridCellAssignments).includes(b.id) || gridCellAssignments[i] === b.id) &&
-                        (!placedBoothIds.includes(b.id) || gridCellAssignments[i] === b.id)
-                      );
-                      
-                      return (
-                        <div 
-                          key={i} 
-                          className="border-2 border-primary/60 bg-white/30 flex flex-col items-center justify-center text-xs relative pointer-events-auto group hover:bg-primary/20 transition-colors"
-                        >
-                          {assignedBooth ? (
-                            <div 
-                              className="w-full h-full flex items-center justify-center cursor-pointer font-bold text-primary"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const newAssignments = { ...gridCellAssignments };
-                                delete newAssignments[i];
-                                setGridCellAssignments(newAssignments);
-                              }}
-                              title="Кликните чтобы удалить"
-                            >
-                              {assignedBooth.number}
-                            </div>
-                          ) : (
-                            <select
-                              value=""
-                              onChange={(e) => {
-                                if (e.target.value) {
-                                  const newAssignments = { ...gridCellAssignments };
-                                  newAssignments[i] = e.target.value;
-                                  setGridCellAssignments(newAssignments);
-                                }
-                              }}
-                              onClick={(e) => e.stopPropagation()}
-                              className="w-full h-full text-center bg-white/50 cursor-pointer hover:bg-primary/10 focus:outline-none focus:bg-primary/20 font-semibold text-primary border border-primary/30 px-1"
-                              style={{ fontSize: '0.7rem' }}
-                            >
-                              <option value="" disabled>
-                                {availableBooths.length > 0 ? `Выбрать (${availableBooths.length})` : 'Нет стендов'}
-                              </option>
-                              {availableBooths.map(booth => (
-                                <option key={booth.id} value={booth.id}>
-                                  {booth.number}
-                                </option>
-                              ))}
-                            </select>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                  
-                  <div
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      setResizingGrid('se');
-                    }}
-                    className="absolute bottom-0 right-0 w-4 h-4 bg-primary rounded-full cursor-se-resize border-2 border-white shadow-lg hover:scale-125 transition-transform z-10"
-                    style={{ transform: 'translate(50%, 50%)' }}
-                  />
-                  <div
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      const container = containerRef.current;
-                      if (!container) return;
-                      
-                      const rect = container.getBoundingClientRect();
-                      const containerWidth = 2400;
-                      const containerHeight = 1200;
-                      
-                      const mouseXInContainer = (e.clientX - rect.left) / zoom;
-                      const mouseYInContainer = (e.clientY - rect.top) / zoom;
-                      
-                      const mouseX = (mouseXInContainer / containerWidth) * 100;
-                      const mouseY = (mouseYInContainer / containerHeight) * 100;
-                      
-                      const centerX = grid.x + grid.width / 2;
-                      const centerY = grid.y + grid.height / 2;
-                      const angle = Math.atan2(mouseY - centerY, mouseX - centerX) * (180 / Math.PI);
-                      
-                      setRotationStart({ angle, rotation: grid.rotation });
-                      setRotatingGrid(true);
-                    }}
-                    className="absolute top-0 left-1/2 w-5 h-5 bg-green-500 rounded-full cursor-grab border-2 border-white shadow-lg hover:scale-125 transition-transform flex items-center justify-center z-10"
-                    style={{ transform: 'translate(-50%, -150%)' }}
-                  >
-                    <Icon name="RotateCw" size={12} className="text-white" />
-                  </div>
-                </div>
-              )}
-
-              {booths.map((booth) => {
-                const position = positions.find(p => p.id === booth.id);
-                if (!position) return null;
-                
-                const isActive = dragging === booth.id || resizing?.id === booth.id || rotating === booth.id;
-                
-                return (
-                  <div
-                    key={booth.id}
-                    className={`absolute ${isActive ? 'z-50' : 'hover:z-40'}`}
-                    style={{
-                      left: `${position.x}%`,
-                      top: `${position.y}%`,
-                      width: `${position.width}%`,
-                      height: `${position.height}%`,
-                      transform: `rotate(${position.rotation || 0}deg)`,
-                      transformOrigin: 'center',
-                    }}
-                  >
-                    <button
-                      onMouseDown={(e) => handleMouseDown(e, booth.id)}
-                      onClick={() => !editMode && setSelectedBooth(booth)}
-                      className={`${getBoothColor(booth.status)} text-white font-bold text-xs sm:text-sm rounded-sm transition-all duration-200 ${editMode ? 'cursor-move hover:ring-2 hover:ring-primary/50' : 'cursor-pointer hover:scale-110 hover:shadow-2xl'} w-full h-full flex items-center justify-center ${editMode ? 'border border-primary' : 'border-2 border-white/20'} ${isActive ? 'shadow-2xl ring-2 ring-primary' : ''}`}
-                    >
-                      {booth.id}
-                    </button>
-                    
-                    {editMode && (
-                      <>
-                        <div
-                          onMouseDown={(e) => handleResizeMouseDown(e, booth.id, 'se')}
-                          className="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full cursor-se-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
-                          style={{ transform: 'translate(50%, 50%)' }}
-                        />
-                        <div
-                          onMouseDown={(e) => handleResizeMouseDown(e, booth.id, 'sw')}
-                          className="absolute bottom-0 left-0 w-3 h-3 bg-primary rounded-full cursor-sw-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
-                          style={{ transform: 'translate(-50%, 50%)' }}
-                        />
-                        <div
-                          onMouseDown={(e) => handleResizeMouseDown(e, booth.id, 'ne')}
-                          className="absolute top-0 right-0 w-3 h-3 bg-primary rounded-full cursor-ne-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
-                          style={{ transform: 'translate(50%, -50%)' }}
-                        />
-                        <div
-                          onMouseDown={(e) => handleResizeMouseDown(e, booth.id, 'nw')}
-                          className="absolute top-0 left-0 w-3 h-3 bg-primary rounded-full cursor-nw-resize border-2 border-white shadow-lg hover:scale-125 transition-transform"
-                          style={{ transform: 'translate(-50%, -50%)' }}
-                        />
-                        <div
-                          onMouseDown={(e) => handleRotateMouseDown(e, booth.id)}
-                          className="absolute top-0 left-1/2 w-4 h-4 bg-green-500 rounded-full cursor-grab border-2 border-white shadow-lg hover:scale-125 transition-transform flex items-center justify-center"
-                          style={{ transform: 'translate(-50%, -150%)' }}
-                          title="Вращать"
-                        >
-                          <Icon name="RotateCw" size={10} className="text-white" />
-                        </div>
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setPositions(prev => prev.filter(p => p.id !== booth.id));
-                            toast({
-                              title: 'Стенд удален с карты',
-                              description: `Стенд ${booth.id} удален из разметки`,
-                            });
-                          }}
-                          className="absolute bottom-0 left-1/2 w-5 h-5 bg-red-500 rounded-full cursor-pointer border-2 border-white shadow-lg hover:scale-125 transition-transform flex items-center justify-center"
-                          style={{ transform: 'translate(-50%, 150%)' }}
-                          title="Удалить с карты"
-                        >
-                          <Icon name="Trash2" size={10} className="text-white" />
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            <div className="absolute bottom-6 left-6 bg-white/90 px-3 py-2 rounded-lg border-2 border-gray-200 text-xs text-gray-600">
-              💡 Колёсико мыши для зума • Зажмите левую кнопку для перемещения карты
-            </div>
-          </div>
-        </Card>
       </div>
 
-      <Dialog open={!!selectedBooth} onOpenChange={() => setSelectedBooth(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <Icon name="MapPin" size={24} className="text-primary" />
-              Стенд {selectedBooth?.id}
-            </DialogTitle>
-            <DialogDescription>
-              Подробная информация о стенде
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
-              <span className="text-sm font-medium text-gray-600">Статус</span>
-              <Badge 
-                variant={selectedBooth?.status === 'available' ? 'default' : 'destructive'}
-                className={selectedBooth?.status === 'available' ? 'bg-booth-available' : 'bg-booth-booked'}
-              >
-                {selectedBooth && getStatusText(selectedBooth.status)}
-              </Badge>
-            </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
 
-            {selectedBooth?.size && (
-              <div className="p-4 bg-slate-50 rounded-lg space-y-2">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Icon name="Maximize" size={18} />
-                  <span className="text-sm font-medium">Размер</span>
-                </div>
-                <p className="text-gray-900 font-semibold pl-6">{selectedBooth.size}</p>
-              </div>
-            )}
+      <BoothInfoDialog
+        booth={selectedBooth}
+        onClose={() => setSelectedBooth(null)}
+        editMode={editMode}
+        onChangeStatus={handleChangeStatus}
+        onDeleteBooth={handleDeleteBooth}
+      />
 
-            {selectedBooth?.price && (
-              <div className="p-4 bg-slate-50 rounded-lg space-y-2">
-                <div className="flex items-center gap-2 text-gray-600">
-                  <Icon name="DollarSign" size={18} />
-                  <span className="text-sm font-medium">Стоимость</span>
-                </div>
-                <p className="text-gray-900 font-semibold pl-6">{selectedBooth.price}</p>
-              </div>
-            )}
+      <SheetDialog
+        open={showSheetDialog}
+        onClose={() => setShowSheetDialog(false)}
+        sheetUrl={sheetUrl}
+        onSave={handleSaveSheetUrl}
+      />
 
-            {selectedBooth?.status === 'booked' && (
-              <>
-                <div className="p-4 bg-slate-50 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Icon name="Building2" size={18} />
-                    <span className="text-sm font-medium">Компания</span>
-                  </div>
-                  <p className="text-gray-900 font-semibold pl-6">{selectedBooth.company}</p>
-                </div>
-
-                <div className="p-4 bg-slate-50 rounded-lg space-y-2">
-                  <div className="flex items-center gap-2 text-gray-600">
-                    <Icon name="User" size={18} />
-                    <span className="text-sm font-medium">Контактное лицо</span>
-                  </div>
-                  <p className="text-gray-900 font-semibold pl-6">{selectedBooth.contact}</p>
-                </div>
-              </>
-            )}
-
-            {selectedBooth?.status === 'available' && (
-              <div className="p-6 bg-booth-available/10 rounded-lg border-2 border-booth-available/20 text-center">
-                <Icon name="CheckCircle" size={48} className="mx-auto mb-3 text-booth-available" />
-                <p className="text-booth-available font-bold text-lg">Стенд свободен для бронирования</p>
-                <p className="text-gray-600 text-sm mt-2">Свяжитесь с менеджером для оформления брони</p>
-              </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showSheetDialog} onOpenChange={setShowSheetDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <Icon name="Sheet" size={24} className="text-primary" />
-              Синхронизация с Google Таблицами
-            </DialogTitle>
-            <DialogDescription>
-              Подключите Google Таблицу для автоматической синхронизации статусов бронирования
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">URL Google Таблицы</label>
-              <input
-                type="url"
-                value={sheetUrl}
-                onChange={(e) => setSheetUrl(e.target.value)}
-                placeholder="https://docs.google.com/spreadsheets/d/..."
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition-colors"
-              />
-            </div>
-
-            <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
-              <div className="flex items-start gap-3">
-                <Icon name="Info" size={20} className="text-primary mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-gray-600">
-                  <p className="font-medium text-gray-900 mb-2">Формат таблицы:</p>
-                  <p>• Столбец A: Номер стенда (A1, A2, B1...)</p>
-                  <p>• Столбец B: Статус (available/booked/unavailable)</p>
-                  <p>• Столбец C: Компания (опционально)</p>
-                  <p>• Столбец D: Контакт (опционально)</p>
-                  <p>• Столбец E: Размер (опционально)</p>
-                  <p>• Столбец F: Цена (опционально)</p>
-                  <p className="mt-2 font-medium text-gray-900">Для загрузки карты из таблицы:</p>
-                  <p>• Добавьте строку: mapUrl в столбец A, URL картинки в столбец B</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border-2 border-slate-200">
-              <input
-                type="checkbox"
-                id="auto-sync"
-                checked={autoSync}
-                onChange={(e) => setAutoSync(e.target.checked)}
-                className="w-5 h-5 rounded border-gray-300 text-primary focus:ring-primary cursor-pointer"
-              />
-              <label htmlFor="auto-sync" className="text-sm font-medium text-gray-700 cursor-pointer flex-1">
-                Автоматическое обновление каждые 30 секунд
-              </label>
-              {lastSyncTime && (
-                <span className="text-xs text-gray-500">
-                  Обновлено: {lastSyncTime}
-                </span>
-              )}
-            </div>
-
-            <div className="flex gap-2 justify-end">
-              <Button onClick={() => setShowSheetDialog(false)} variant="outline">
-                Отменить
-              </Button>
-              <Button onClick={() => loadSheetData(false)} disabled={loading} className="bg-booth-available hover:bg-booth-available/80">
-                {loading ? (
-                  <>
-                    <Icon name="Loader2" size={16} className="mr-2 animate-spin" />
-                    Загрузка...
-                  </>
-                ) : (
-                  <>
-                    <Icon name="Download" size={16} className="mr-2" />
-                    Загрузить данные
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={showMapUploadDialog} onOpenChange={setShowMapUploadDialog}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-2xl flex items-center gap-2">
-              <Icon name="Upload" size={24} className="text-primary" />
-              Загрузка карты павильона
-            </DialogTitle>
-            <DialogDescription>
-              Загрузите изображение карты, чтобы обновить фоновую подложку
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Выберите изображение</label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleMapUpload}
-                className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/80 cursor-pointer"
-              />
-            </div>
-
-            <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
-              <div className="flex items-start gap-3">
-                <Icon name="Info" size={20} className="text-primary mt-0.5 flex-shrink-0" />
-                <div className="text-xs text-gray-600">
-                  <p className="font-medium text-gray-900 mb-2">Рекомендации:</p>
-                  <p>• Формат: PNG, JPG, JPEG</p>
-                  <p>• Соотношение сторон: 1920×850 (широкоформатное)</p>
-                  <p>• Максимальный размер: 10 МБ</p>
-                  <p>• Изображение будет загружено на сервер poehali.dev</p>
-                </div>
-              </div>
-            </div>
-
-            {selectedEvent.mapUrl && (
-              <div className="space-y-2">
-                <p className="text-sm font-medium text-gray-700">Текущая карта:</p>
-                <img 
-                  src={selectedEvent.mapUrl} 
-                  alt="Текущая карта" 
-                  className="w-full h-32 object-cover rounded-lg border-2 border-gray-200"
-                />
-              </div>
-            )}
-
-            <div className="flex gap-2 justify-end">
-              <Button onClick={() => setShowMapUploadDialog(false)} variant="outline">
-                Закрыть
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <GridControlDialog
+        open={editingGrid}
+        grid={grid}
+        onClose={() => setEditingGrid(false)}
+        onUpdateGrid={(updates) => setGrid(prev => ({ ...prev, ...updates }))}
+        onApplyGrid={handleApplyGrid}
+        onCancelGrid={handleCancelGrid}
+      />
 
       <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
     </div>

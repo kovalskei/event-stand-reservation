@@ -179,6 +179,22 @@ export default function Index() {
       
       if (data.sheet_url) {
         setSheetUrl(data.sheet_url);
+        // Автоматически загружаем данные из таблицы
+        try {
+          const response = await fetch('https://functions.poehali.dev/0a047b83-702c-4547-ae04-ff2dd383ee27', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sheetUrl: data.sheet_url }),
+          });
+          
+          if (response.ok) {
+            const sheetData = await response.json();
+            setBooths(sheetData.booths);
+            setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
+          }
+        } catch (error) {
+          console.error('Failed to auto-load sheet data:', error);
+        }
       }
       
       if (data.booths && data.booths.length > 0) {

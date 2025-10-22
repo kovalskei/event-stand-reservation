@@ -168,6 +168,9 @@ export default function Index() {
         }));
         setEvents(mappedEvents);
         setSelectedEvent(mappedEvents[0]);
+      } else {
+        setEvents(mockEvents);
+        setSelectedEvent(mockEvents[0]);
       }
     } catch (error) {
       console.error('Failed to load events:', error);
@@ -193,14 +196,6 @@ export default function Index() {
       setPositions(JSON.parse(saved));
     } else {
       setPositions(defaultPositions);
-    }
-
-    const savedMapUrl = localStorage.getItem(`map-url-${selectedEvent.id}`);
-    if (savedMapUrl) {
-      setSelectedEvent(prev => ({
-        ...prev,
-        mapUrl: savedMapUrl
-      }));
     }
   }, [selectedEvent.id]);
 

@@ -90,6 +90,12 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       const WEB_CONTAINER_ASPECT = 1920 / 850;
       const imageAspect = mapImg.width / mapImg.height;
       
+      console.log('PDF Debug:', {
+        imageSize: `${mapImg.width}x${mapImg.height}`,
+        imageAspect: imageAspect.toFixed(3),
+        containerAspect: WEB_CONTAINER_ASPECT.toFixed(3),
+      });
+      
       const containerWidth = 1920;
       const containerHeight = 850;
       let imageOffsetX = 0;
@@ -101,14 +107,18 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
         imageRenderWidth = containerWidth;
         imageRenderHeight = containerWidth / imageAspect;
         imageOffsetY = (containerHeight - imageRenderHeight) / 2;
+        console.log('Mode: letterbox top/bottom', { imageOffsetY: imageOffsetY.toFixed(1) });
       } else {
         imageRenderHeight = containerHeight;
         imageRenderWidth = containerHeight * imageAspect;
         imageOffsetX = (containerWidth - imageRenderWidth) / 2;
+        console.log('Mode: letterbox left/right', { imageOffsetX: imageOffsetX.toFixed(1) });
       }
       
       const scaleX = mapImg.width / imageRenderWidth;
       const scaleY = mapImg.height / imageRenderHeight;
+      
+      console.log('Scale:', { scaleX: scaleX.toFixed(3), scaleY: scaleY.toFixed(3) });
       
       const canvas = document.createElement('canvas');
       canvas.width = mapImg.width;

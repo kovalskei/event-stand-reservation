@@ -24,6 +24,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = () => {
     setUserEmail(null);
+    window.location.reload();
   };
 
   return (

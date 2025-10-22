@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Auth from '@/components/Auth';
 import UserProfile from '@/components/UserProfile';
 import { api } from '@/lib/api';
+import { userStorage } from '@/lib/userStorage';
 import Icon from '@/components/ui/icon';
 import { usePDFExport } from '@/hooks/usePDFExport';
 
@@ -103,20 +104,14 @@ export default function Index() {
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [sheetUrl, setSheetUrl] = useState(() => {
-    const saved = localStorage.getItem(`sheet-url-${mockEvents[0].id}`);
-    return saved || '';
-  });
+  const [sheetUrl, setSheetUrl] = useState('');
   const [showSheetDialog, setShowSheetDialog] = useState(false);
   const [showMapUploadDialog, setShowMapUploadDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [autoSync, setAutoSync] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
   const syncIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const [positions, setPositions] = useState<BoothPosition[]>(() => {
-    const saved = localStorage.getItem(`booth-positions-${mockEvents[0].id}`);
-    return saved ? JSON.parse(saved) : defaultPositions;
-  });
+  const [positions, setPositions] = useState<BoothPosition[]>(defaultPositions);
   const [dragging, setDragging] = useState<string | null>(null);
   const [resizing, setResizing] = useState<{ id: string; corner: 'se' | 'sw' | 'ne' | 'nw' } | null>(null);
   const [rotating, setRotating] = useState<string | null>(null);
@@ -203,56 +198,29 @@ export default function Index() {
   }, []);
 
   useEffect(() => {
-    const loadEventData = async () => {
-      const eventId = Number(selectedEvent.id);
-      
-      try {
-        const data = await api.getBooths(eventId);
-        
-        if (data.booths && data.booths.length > 0) {
-          const boothPositions = data.booths.map(b => ({
-            id: b.id,
-            x: b.x,
-            y: b.y,
-            width: b.width,
-            height: b.height,
-            rotation: 0
-          }));
-          setPositions(boothPositions);
-        } else {
-          const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
-          if (saved) {
-            setPositions(JSON.parse(saved));
-          } else {
-            setPositions(defaultPositions);
-          }
-        }
-        
-        if (data.sheet_url) {
-          setSheetUrl(data.sheet_url);
-        } else {
-          const savedSheetUrl = localStorage.getItem(`sheet-url-${selectedEvent.id}`);
-          if (savedSheetUrl) {
-            setSheetUrl(savedSheetUrl);
-          }
-        }
-      } catch (error) {
-        const saved = localStorage.getItem(`booth-positions-${selectedEvent.id}`);
-        if (saved) {
-          setPositions(JSON.parse(saved));
-        } else {
-          setPositions(defaultPositions);
-        }
-        
-        const savedSheetUrl = localStorage.getItem(`sheet-url-${selectedEvent.id}`);
-        if (savedSheetUrl) {
-          setSheetUrl(savedSheetUrl);
-        }
-      }
-    };
+    if (!userEmail) return;
     
-    loadEventData();
-  }, [selectedEvent.id]);
+    const eventData = userStorage.getEventData(userEmail, selectedEvent.id);
+    
+    if (eventData) {
+      if (eventData.boothPositions && eventData.boothPositions.length > 0) {
+        setPositions(eventData.boothPositions);
+      } else {
+        setPositions(defaultPositions);
+      }
+      
+      if (eventData.sheetUrl) {
+        setSheetUrl(eventData.sheetUrl);
+      }
+      
+      if (eventData.mapUrl && eventData.mapUrl !== selectedEvent.mapUrl) {
+        setSelectedEvent(prev => ({ ...prev, mapUrl: eventData.mapUrl }));
+      }
+    } else {
+      setPositions(defaultPositions);
+      setSheetUrl('');
+    }
+  }, [selectedEvent.id, userEmail]);
 
   const getBoothColor = (status: BoothStatus) => {
     switch (status) {
@@ -538,11 +506,13 @@ export default function Index() {
           ...prev,
           mapUrl: data.mapUrl
         }));
+        if (userEmail) {
+          userStorage.saveMapUrl(userEmail, selectedEvent.id, data.mapUrl);
+        }
       }
       
-      localStorage.setItem(`sheet-url-${selectedEvent.id}`, sheetUrl);
-      
       if (userEmail) {
+        userStorage.saveSheetUrl(userEmail, selectedEvent.id, sheetUrl);
         try {
           await api.saveSheetUrl(Number(selectedEvent.id), sheetUrl);
         } catch (error) {
@@ -630,7 +600,9 @@ export default function Index() {
   };
 
   const savePositions = () => {
-    localStorage.setItem(`booth-positions-${selectedEvent.id}`, JSON.stringify(positions));
+    if (userEmail) {
+      userStorage.saveBoothPositions(userEmail, selectedEvent.id, positions);
+    }
     toast({
       title: 'Позиции сохранены',
       description: 'Разметка стендов успешно сохранена',
@@ -657,7 +629,9 @@ export default function Index() {
         throw new Error('Не удалось сохранить карту');
       }
 
-      localStorage.setItem(`map-url-${selectedEvent.id}`, selectedEvent.mapUrl);
+      if (userEmail) {
+        userStorage.saveMapUrl(userEmail, selectedEvent.id, selectedEvent.mapUrl);
+      }
       setMapChanged(false);
       toast({
         title: 'Карта сохранена',
@@ -724,7 +698,9 @@ export default function Index() {
 
   const resetPositions = () => {
     setPositions(defaultPositions);
-    localStorage.removeItem(`booth-positions-${selectedEvent.id}`);
+    if (userEmail) {
+      userStorage.clearEventData(userEmail, selectedEvent.id);
+    }
     toast({
       title: 'Позиции сброшены',
       description: 'Разметка возвращена к настройкам по умолчанию',

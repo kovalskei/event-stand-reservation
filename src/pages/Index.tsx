@@ -237,6 +237,7 @@ export default function Index() {
         const data = await api.getBooths(Number(selectedEvent.id));
         
         if (data.booths && data.booths.length > 0) {
+          setBooths(data.booths);
           const boothPositions = data.booths.map(b => ({
             id: b.id,
             x: b.x,
@@ -248,34 +249,21 @@ export default function Index() {
           setPositions(boothPositions);
           userStorage.saveBoothPositions(userEmail, selectedEvent.id, boothPositions);
         } else {
-          const localData = userStorage.getEventData(userEmail, selectedEvent.id);
-          if (localData?.boothPositions && localData.boothPositions.length > 0) {
-            setPositions(localData.boothPositions);
-          } else {
-            setPositions(defaultPositions);
-          }
+          setBooths([]);
+          setPositions([]);
         }
         
         if (data.sheet_url) {
           setSheetUrl(data.sheet_url);
           userStorage.saveSheetUrl(userEmail, selectedEvent.id, data.sheet_url);
         } else {
-          const localData = userStorage.getEventData(userEmail, selectedEvent.id);
-          if (localData?.sheetUrl) {
-            setSheetUrl(localData.sheetUrl);
-          }
+          setSheetUrl('');
         }
       } catch (error) {
         console.error('Failed to load from DB, using localStorage:', error);
-        const localData = userStorage.getEventData(userEmail, selectedEvent.id);
-        if (localData) {
-          if (localData.boothPositions?.length > 0) {
-            setPositions(localData.boothPositions);
-          }
-          if (localData.sheetUrl) {
-            setSheetUrl(localData.sheetUrl);
-          }
-        }
+        setBooths([]);
+        setPositions([]);
+        setSheetUrl('');
       }
     };
     

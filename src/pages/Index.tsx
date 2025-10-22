@@ -837,6 +837,7 @@ export default function Index() {
 
           // Сохраняем URL карты в базу данных
           try {
+            console.log('Saving map to DB:', { event_id: selectedEvent.id, map_url: imageUrl });
             const saveResponse = await fetch('https://functions.poehali.dev/c9b46bff-046e-40ca-b12e-632b8ad7462f', {
               method: 'POST',
               headers: {
@@ -849,14 +850,17 @@ export default function Index() {
               }),
             });
 
+            const saveResult = await saveResponse.json();
+            console.log('Save map response:', saveResult);
+
             if (!saveResponse.ok) {
-              throw new Error('Не удалось сохранить карту в базу данных');
+              throw new Error(saveResult.error || 'Не удалось сохранить карту в базу данных');
             }
           } catch (saveError) {
             console.error('Failed to save map URL:', saveError);
             toast({
               title: 'Предупреждение',
-              description: 'Карта загружена, но не сохранена в базу. Нажмите "Сохранить карту".',
+              description: saveError instanceof Error ? saveError.message : 'Карта загружена, но не сохранена в базу. Нажмите "Сохранить карту".',
               variant: 'destructive',
             });
           }

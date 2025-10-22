@@ -23,6 +23,7 @@ export interface Event {
   name: string;
   date: string;
   location: string;
+  description?: string;
   mapUrl: string;
   sheetId: string;
 }

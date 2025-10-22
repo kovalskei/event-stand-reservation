@@ -129,8 +129,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     user = cur.fetchone()
                 
                 cur.execute(
-                    "INSERT INTO events (user_id, name, date, location, map_url) VALUES (%s, %s, %s, %s, %s) RETURNING *",
-                    (user['id'], body_data.get('name'), body_data.get('date'), body_data.get('location'), body_data.get('map_url'))
+                    "INSERT INTO t_p5249081_event_stand_reservat.events (user_id, name, date, location, map_url, description) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *",
+                    (user['id'], body_data.get('name', 'Новое мероприятие'), body_data.get('date'), body_data.get('location'), body_data.get('map_url'), body_data.get('description', ''))
                 )
                 conn.commit()
                 new_event = cur.fetchone()
@@ -205,6 +205,30 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                         'Access-Control-Allow-Origin': '*'
                     },
                     'body': json.dumps({'success': True}),
+                    'isBase64Encoded': False
+                }
+            
+            if action == 'update_event':
+                event_id = body_data.get('event_id')
+                name = body_data.get('name')
+                description = body_data.get('description')
+                date = body_data.get('date')
+                location = body_data.get('location')
+                
+                cur.execute(
+                    "UPDATE t_p5249081_event_stand_reservat.events SET name = %s, description = %s, date = %s, location = %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s RETURNING *",
+                    (name, description, date, location, event_id)
+                )
+                conn.commit()
+                updated_event = cur.fetchone()
+                
+                return {
+                    'statusCode': 200,
+                    'headers': {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    },
+                    'body': json.dumps(dict(updated_event) if updated_event else {}, default=str),
                     'isBase64Encoded': False
                 }
             

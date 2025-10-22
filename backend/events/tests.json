@@ -42,6 +42,20 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Update event details",
+      "method": "POST",
+      "body": {
+        "action": "update_event",
+        "event_id": 1,
+        "name": "Updated Event",
+        "description": "New description",
+        "date": "2025-12-20",
+        "location": "St. Petersburg"
+      },
+      "expectedStatus": 200,
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Save booths",
       "method": "POST",
       "body": {

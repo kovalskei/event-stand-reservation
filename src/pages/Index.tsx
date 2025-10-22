@@ -156,6 +156,7 @@ export default function Index() {
         console.log('No events found, creating default event...');
         const newEvent = await api.createEvent(userEmail, {
           name: 'Выставка 2025',
+          description: '',
           date: '15-20 марта 2025',
           location: 'Павильон 1'
         });
@@ -344,6 +345,73 @@ export default function Index() {
     total: booths.length,
     available: booths.filter(b => b.status === 'available').length,
     booked: booths.filter(b => b.status === 'booked').length,
+  };
+
+  const handleCreateEvent = async (data: { name: string; description: string; date: string; location: string }) => {
+    if (!userEmail) return;
+    
+    try {
+      const newEvent = await api.createEvent(userEmail, data);
+      const mappedEvent = {
+        id: String(newEvent.id),
+        name: newEvent.name,
+        date: newEvent.date || '',
+        location: newEvent.location || '',
+        description: newEvent.description || '',
+        mapUrl: newEvent.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+        sheetId: '',
+      };
+      setEvents([...events, mappedEvent]);
+      setSelectedEvent(mappedEvent);
+      
+      toast({
+        title: 'Мероприятие создано',
+        description: `Мероприятие "${data.name}" успешно создано`,
+      });
+    } catch (error) {
+      console.error('Failed to create event:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось создать мероприятие',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUpdateEvent = async (data: { name: string; description: string; date: string; location: string; id: string }) => {
+    try {
+      const updatedEvent = await api.updateEvent(data.id, {
+        name: data.name,
+        description: data.description,
+        date: data.date,
+        location: data.location,
+      });
+      
+      const mappedEvent = {
+        id: String(updatedEvent.id),
+        name: updatedEvent.name,
+        date: updatedEvent.date || '',
+        location: updatedEvent.location || '',
+        description: updatedEvent.description || '',
+        mapUrl: updatedEvent.map_url || selectedEvent.mapUrl,
+        sheetId: selectedEvent.sheetId,
+      };
+      
+      setEvents(events.map(e => e.id === data.id ? mappedEvent : e));
+      setSelectedEvent(mappedEvent);
+      
+      toast({
+        title: 'Изменения сохранены',
+        description: `Мероприятие "${data.name}" обновлено`,
+      });
+    } catch (error) {
+      console.error('Failed to update event:', error);
+      toast({
+        title: 'Ошибка',
+        description: 'Не удалось обновить мероприятие',
+        variant: 'destructive',
+      });
+    }
   };
 
   const snapToNeighbors = (id: string, x: number, y: number, width: number, height: number) => {
@@ -1018,22 +1086,92 @@ export default function Index() {
             </div>
           </div>
 
-          <div className="flex items-center gap-4">
-            <label className="text-sm font-medium text-gray-600">Мероприятие:</label>
-            <select
-              value={selectedEvent.id}
-              onChange={(e) => {
-                const event = events.find(ev => ev.id === e.target.value);
-                if (event) setSelectedEvent(event);
-              }}
-              className="px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 font-medium focus:border-primary focus:outline-none transition-colors"
-            >
-              {events.map(event => (
-                <option key={event.id} value={event.id}>
-                  {event.name} • {event.date} • {event.location}
-                </option>
-              ))}
-            </select>
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-4">
+              <label className="text-sm font-medium text-gray-600">Мероприятие:</label>
+              <select
+                value={selectedEvent.id}
+                onChange={(e) => {
+                  const event = events.find(ev => ev.id === e.target.value);
+                  if (event) setSelectedEvent(event);
+                }}
+                className="px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 font-medium focus:border-primary focus:outline-none transition-colors flex-1"
+              >
+                {events.map(event => (
+                  <option key={event.id} value={event.id}>
+                    {event.name} • {event.date} • {event.location}
+                  </option>
+                ))}
+              </select>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const modal = document.createElement('div');
+                    modal.id = 'event-editor-modal';
+                    document.body.appendChild(modal);
+                    import('@/components/expo/EventEditor').then(({ EventEditor }) => {
+                      import('react-dom/client').then(({ createRoot }) => {
+                        const root = createRoot(modal);
+                        root.render(
+                          <EventEditor
+                            open={true}
+                            onOpenChange={(open) => {
+                              if (!open) {
+                                root.unmount();
+                                modal.remove();
+                              }
+                            }}
+                            mode="create"
+                            onSave={handleCreateEvent}
+                          />
+                        );
+                      });
+                    });
+                  }}
+                  className="h-auto px-3"
+                >
+                  <Icon name="Plus" size={16} className="mr-2" />
+                  Создать
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    const modal = document.createElement('div');
+                    modal.id = 'event-editor-modal';
+                    document.body.appendChild(modal);
+                    import('@/components/expo/EventEditor').then(({ EventEditor }) => {
+                      import('react-dom/client').then(({ createRoot }) => {
+                        const root = createRoot(modal);
+                        root.render(
+                          <EventEditor
+                            open={true}
+                            onOpenChange={(open) => {
+                              if (!open) {
+                                root.unmount();
+                                modal.remove();
+                              }
+                            }}
+                            event={selectedEvent}
+                            mode="edit"
+                            onSave={(data) => handleUpdateEvent({ ...data, id: selectedEvent.id })}
+                          />
+                        );
+                      });
+                    });
+                  }}
+                  className="h-auto px-3"
+                >
+                  <Icon name="Edit" size={16} className="mr-2" />
+                  Редактировать
+                </Button>
+              </div>
+            </div>
+            {selectedEvent.description && (
+              <p className="text-sm text-gray-600 ml-28">{selectedEvent.description}</p>
+            )}
           </div>
         </header>
 

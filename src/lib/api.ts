@@ -13,6 +13,7 @@ export interface Event {
   name: string;
   date: string;
   location: string;
+  description?: string;
   created_at: string;
   updated_at: string;
   map_url?: string;
@@ -62,7 +63,7 @@ export const api = {
     return data;
   },
 
-  async createEvent(userEmail: string, data: { name: string; date: string; location: string }): Promise<Event> {
+  async createEvent(userEmail: string, data: { name: string; description: string; date: string; location: string }): Promise<Event> {
     const response = await fetch(API_URL, {
       method: 'POST',
       headers: {
@@ -77,6 +78,26 @@ export const api = {
     
     if (!response.ok) {
       throw new Error('Failed to create event');
+    }
+    
+    return response.json();
+  },
+
+  async updateEvent(eventId: string, data: { name: string; description: string; date: string; location: string }): Promise<Event> {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'update_event',
+        event_id: eventId,
+        ...data,
+      }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to update event');
     }
     
     return response.json();

@@ -180,6 +180,7 @@ export default function Index() {
       
       // Загружаем удалённые ID из localStorage
       const deletedIds = userStorage.getDeletedBoothIds(userEmail, mappedEvents[0].id);
+      console.log('Loaded deleted booth IDs:', deletedIds);
       setDeletedBoothIds(new Set(deletedIds));
       
       if (data.sheet_url) {
@@ -194,7 +195,9 @@ export default function Index() {
           
           if (response.ok) {
             const sheetData = await response.json();
+            console.log('Sheet data before filter:', sheetData.booths.length, 'booths');
             const filteredBooths = sheetData.booths.filter((b: Booth) => !deletedIds.includes(b.id));
+            console.log('Sheet data after filter:', filteredBooths.length, 'booths');
             setBooths(filteredBooths);
             setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
           }
@@ -611,7 +614,10 @@ export default function Index() {
 
       const data = await response.json();
       // Фильтруем удалённые стенды
+      console.log('loadSheetData - deletedBoothIds:', Array.from(deletedBoothIds));
+      console.log('loadSheetData - before filter:', data.booths.length);
       const filteredBooths = data.booths.filter((booth: Booth) => !deletedBoothIds.has(booth.id));
+      console.log('loadSheetData - after filter:', filteredBooths.length);
       setBooths(filteredBooths);
       
       if (data.mapUrl) {

@@ -202,7 +202,7 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
           maxY = Math.max(maxY, y + h);
         });
         
-        const padding = 100;
+        const padding = 200;
         minX = Math.max(0, minX - padding);
         minY = Math.max(0, minY - padding);
         maxX = Math.min(mapImg.width, maxX + padding);

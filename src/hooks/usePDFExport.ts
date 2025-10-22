@@ -110,9 +110,9 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       
       ctx.drawImage(mapImg, 0, 0);
       
-      const headerFontSize = Math.max(40, mapImg.width / 60);
-      const subHeaderFontSize = Math.max(24, mapImg.width / 100);
-      const headerY = Math.max(60, mapImg.height / 20);
+      const headerFontSize = Math.max(60, mapImg.width / 40);
+      const subHeaderFontSize = Math.max(32, mapImg.width / 80);
+      const headerY = Math.max(80, mapImg.height / 15);
       
       ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
       ctx.fillRect(0, 0, mapImg.width, headerY + 40);
@@ -181,6 +181,70 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       
       const compositeImgData = canvas.toDataURL('image/jpeg', 0.85);
       pdf.addImage(compositeImgData, 'JPEG', mapX, 10, mapWidth, mapHeight);
+      
+      if (positions.length > 0) {
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        
+        positions.forEach(pos => {
+          const webX = (pos.x / 100) * containerWidth - imageOffsetX;
+          const webY = (pos.y / 100) * containerHeight - imageOffsetY;
+          const webW = (pos.width / 100) * containerWidth;
+          const webH = (pos.height / 100) * containerHeight;
+          
+          const x = webX * scaleX;
+          const y = webY * scaleY;
+          const w = webW * scaleX;
+          const h = webH * scaleY;
+          
+          minX = Math.min(minX, x);
+          minY = Math.min(minY, y);
+          maxX = Math.max(maxX, x + w);
+          maxY = Math.max(maxY, y + h);
+        });
+        
+        const padding = 100;
+        minX = Math.max(0, minX - padding);
+        minY = Math.max(0, minY - padding);
+        maxX = Math.min(mapImg.width, maxX + padding);
+        maxY = Math.min(mapImg.height, maxY + padding);
+        
+        const zoomWidth = maxX - minX;
+        const zoomHeight = maxY - minY;
+        
+        if (zoomWidth > 0 && zoomHeight > 0) {
+          const zoomCanvas = document.createElement('canvas');
+          zoomCanvas.width = zoomWidth;
+          zoomCanvas.height = zoomHeight;
+          const zoomCtx = zoomCanvas.getContext('2d')!;
+          
+          zoomCtx.drawImage(canvas, minX, minY, zoomWidth, zoomHeight, 0, 0, zoomWidth, zoomHeight);
+          
+          pdf.addPage();
+          
+          const zoomAspect = zoomWidth / zoomHeight;
+          let zoomPdfWidth = pageWidth - 20;
+          let zoomPdfHeight = zoomPdfWidth / zoomAspect;
+          
+          if (zoomPdfHeight > pageHeight - 60) {
+            zoomPdfHeight = pageHeight - 60;
+            zoomPdfWidth = zoomPdfHeight * zoomAspect;
+          }
+          
+          const zoomX = (pageWidth - zoomPdfWidth) / 2;
+          const zoomY = 30;
+          
+          zoomCtx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+          zoomCtx.fillRect(0, 0, zoomWidth, 80);
+          
+          zoomCtx.fillStyle = '#000';
+          zoomCtx.font = 'bold 48px Arial';
+          zoomCtx.textAlign = 'center';
+          zoomCtx.fillText('Детальная схема стендов', zoomWidth / 2, 50);
+          
+          const zoomImgData = zoomCanvas.toDataURL('image/jpeg', 0.95);
+          pdf.addImage(zoomImgData, 'JPEG', zoomX, zoomY, zoomPdfWidth, zoomPdfHeight);
+        }
+      }
       
       const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
       

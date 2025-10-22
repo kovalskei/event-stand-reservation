@@ -314,15 +314,29 @@ export default function Index() {
   };
 
   const handleDeleteBooth = async (boothId: string) => {
+    console.log('Deleting booth:', boothId);
+    console.log('Current deletedBoothIds:', Array.from(deletedBoothIds));
+    console.log('userEmail:', userEmail);
+    console.log('selectedEvent.id:', selectedEvent.id);
+    
     setBooths(prev => prev.filter(b => b.id !== boothId));
     setPositions(prev => prev.filter(p => p.id !== boothId));
     
     const newDeletedIds = new Set(deletedBoothIds).add(boothId);
     setDeletedBoothIds(newDeletedIds);
     
+    console.log('New deletedBoothIds:', Array.from(newDeletedIds));
+    
     // Сохраняем в localStorage
     if (userEmail) {
+      console.log('Saving to localStorage...');
       userStorage.saveDeletedBoothIds(userEmail, selectedEvent.id, Array.from(newDeletedIds));
+      
+      // Проверяем что сохранилось
+      const saved = userStorage.getDeletedBoothIds(userEmail, selectedEvent.id);
+      console.log('Saved deletedBoothIds (verification):', saved);
+    } else {
+      console.warn('userEmail is not available, cannot save to localStorage');
     }
     
     toast({

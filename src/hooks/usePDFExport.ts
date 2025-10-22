@@ -87,23 +87,21 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       const mapX = (pageWidth - mapWidth) / 2;
       const mapY = 30;
       
-      pdf.addImage(mapImg, 'JPEG', mapX, mapY, mapWidth, mapHeight, undefined, 'FAST');
-      
       const canvas = document.createElement('canvas');
-      canvas.width = 2400;
-      canvas.height = 1200;
+      canvas.width = mapImg.width;
+      canvas.height = mapImg.height;
       const ctx = canvas.getContext('2d')!;
       
-      ctx.drawImage(mapImg, 0, 0, 2400, 1200);
+      ctx.drawImage(mapImg, 0, 0);
       
       positions.forEach(pos => {
         const booth = booths.find(b => b.id === pos.id);
         if (!booth) return;
         
-        const x = (pos.x / 100) * 2400;
-        const y = (pos.y / 100) * 1200;
-        const w = (pos.width / 100) * 2400;
-        const h = (pos.height / 100) * 1200;
+        const x = (pos.x / 100) * mapImg.width;
+        const y = (pos.y / 100) * mapImg.height;
+        const w = (pos.width / 100) * mapImg.width;
+        const h = (pos.height / 100) * mapImg.height;
         
         if (booth.status === 'booked') {
           ctx.fillStyle = 'rgba(22, 163, 74, 0.3)';
@@ -113,12 +111,15 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
           ctx.strokeStyle = 'rgb(59, 130, 246)';
         }
         
-        ctx.lineWidth = 4;
+        const lineWidth = Math.max(2, mapImg.width / 600);
+        const fontSize = Math.max(16, mapImg.width / 80);
+        
+        ctx.lineWidth = lineWidth;
         ctx.fillRect(x, y, w, h);
         ctx.strokeRect(x, y, w, h);
         
         ctx.fillStyle = '#000';
-        ctx.font = 'bold 28px Arial';
+        ctx.font = `bold ${fontSize}px Arial`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(booth.id, x + w / 2, y + h / 2);

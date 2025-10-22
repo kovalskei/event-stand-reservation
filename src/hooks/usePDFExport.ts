@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 import { useToast } from '@/hooks/use-toast';
 
 interface Event {
@@ -33,100 +34,126 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
   const { toast } = useToast();
 
   const exportToPDF = async () => {
+    const mapElement = containerRef.current;
+    if (!mapElement) return;
+
     toast({
       title: 'Экспорт в PDF',
-      description: 'Загрузка карты...',
+      description: 'Подготовка документа...',
     });
 
     try {
-      const pdf = new jsPDF('l', 'mm', 'a4');
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
+      const headerDiv = document.createElement('div');
+      headerDiv.style.cssText = 'position: absolute; left: -9999px; width: 800px; padding: 20px; font-family: Arial, sans-serif; background: white;';
+      headerDiv.innerHTML = `
+        <h1 style="font-size: 32px; margin: 0 0 10px 0; text-align: center; font-weight: bold;">${selectedEvent.name}</h1>
+        <p style="font-size: 18px; margin: 0; text-align: center; color: #666;">${selectedEvent.date} • ${selectedEvent.location}</p>
+      `;
+      document.body.appendChild(headerDiv);
       
-      pdf.setFontSize(24);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(selectedEvent.name, pageWidth / 2, 15, { align: 'center' });
-      
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`${selectedEvent.date} • ${selectedEvent.location}`, pageWidth / 2, 22, { align: 'center' });
-      
-      const mapImg = new Image();
-      mapImg.crossOrigin = 'anonymous';
-      
-      await new Promise<void>((resolve, reject) => {
-        mapImg.onload = () => resolve();
-        mapImg.onerror = () => reject(new Error('Не удалось загрузить карту'));
-        mapImg.src = selectedEvent.mapUrl;
+      const headerCanvas = await html2canvas(headerDiv, {
+        scale: 2,
+        backgroundColor: '#ffffff',
       });
+      document.body.removeChild(headerDiv);
+
+      const mapContainer = document.createElement('div');
+      mapContainer.style.cssText = 'position: absolute; left: -9999px; top: 0; width: 2400px; height: 1200px; background: white;';
       
-      const mapAspectRatio = mapImg.width / mapImg.height;
-      const availableWidth = pageWidth - 20;
-      const availableHeight = pageHeight - 40;
-      
-      let mapWidth = availableWidth;
-      let mapHeight = mapWidth / mapAspectRatio;
-      
-      if (mapHeight > availableHeight) {
-        mapHeight = availableHeight;
-        mapWidth = mapHeight * mapAspectRatio;
-      }
-      
-      const mapX = (pageWidth - mapWidth) / 2;
-      const mapY = 30;
-      
-      pdf.addImage(mapImg, 'JPEG', mapX, mapY, mapWidth, mapHeight, undefined, 'FAST');
+      const mapImg = document.createElement('img');
+      mapImg.src = selectedEvent.mapUrl;
+      mapImg.style.cssText = 'width: 100%; height: 100%; object-fit: contain;';
+      mapContainer.appendChild(mapImg);
       
       positions.forEach(pos => {
         const booth = booths.find(b => b.id === pos.id);
         if (!booth) return;
         
-        const boothX = mapX + (pos.x / 100) * mapWidth;
-        const boothY = mapY + (pos.y / 100) * mapHeight;
-        const boothW = (pos.width / 100) * mapWidth;
-        const boothH = (pos.height / 100) * mapHeight;
-        
-        if (booth.status === 'booked') {
-          pdf.setFillColor(22, 163, 74, 0.2);
-          pdf.setDrawColor(22, 163, 74);
-        } else {
-          pdf.setFillColor(59, 130, 246, 0.2);
-          pdf.setDrawColor(59, 130, 246);
-        }
-        
-        pdf.setLineWidth(0.5);
-        pdf.rect(boothX, boothY, boothW, boothH, 'FD');
-        
-        pdf.setFontSize(8);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setTextColor(0, 0, 0);
-        pdf.text(booth.id, boothX + boothW / 2, boothY + boothH / 2, { 
-          align: 'center',
-          baseline: 'middle'
-        });
+        const boothDiv = document.createElement('div');
+        boothDiv.style.cssText = `
+          position: absolute;
+          left: ${pos.x}%;
+          top: ${pos.y}%;
+          width: ${pos.width}%;
+          height: ${pos.height}%;
+          transform: rotate(${pos.rotation || 0}deg);
+          transform-origin: center;
+          border: 2px solid ${booth.status === 'booked' ? '#16a34a' : '#3b82f6'};
+          background-color: ${booth.status === 'booked' ? 'rgba(22, 163, 74, 0.2)' : 'rgba(59, 130, 246, 0.2)'};
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          font-size: 14px;
+          color: #000;
+        `;
+        boothDiv.textContent = booth.id;
+        mapContainer.appendChild(boothDiv);
       });
+      
+      document.body.appendChild(mapContainer);
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      const mapCanvas = await html2canvas(mapContainer, {
+        scale: 1,
+        backgroundColor: '#ffffff',
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+        width: 2400,
+        height: 1200,
+      });
+      
+      document.body.removeChild(mapContainer);
+
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const headerImgData = headerCanvas.toDataURL('image/png');
+      const headerWidth = 190;
+      const headerHeight = (headerCanvas.height * headerWidth) / headerCanvas.width;
+      pdf.addImage(headerImgData, 'PNG', 10, 10, headerWidth, headerHeight);
+      
+      const mapImgData = mapCanvas.toDataURL('image/jpeg', 0.7);
+      const mapWidth = 190;
+      const mapHeight = (mapCanvas.height * mapWidth) / mapCanvas.width;
+      const mapYPosition = 10 + headerHeight + 5;
+      pdf.addImage(mapImgData, 'JPEG', 10, mapYPosition, mapWidth, mapHeight);
+      
+      let yPosition = mapYPosition + mapHeight + 10;
       
       const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
       
       if (bookedBooths.length > 0) {
-        pdf.addPage();
+        if (yPosition > 250) {
+          pdf.addPage();
+          yPosition = 15;
+        }
         
-        pdf.setFontSize(18);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('Забронированные стенды', 15, 20);
+        const listDiv = document.createElement('div');
+        listDiv.style.cssText = 'position: absolute; left: -9999px; width: 800px; padding: 10px; font-family: Arial, sans-serif; background: white;';
+        listDiv.innerHTML = `
+          <h2 style="font-size: 20px; margin: 0 0 10px 0; font-weight: bold;">Забронированные стенды:</h2>
+          ${bookedBooths.map(booth => `<p style="font-size: 16px; margin: 5px 0;">${booth.id} - ${booth.company}</p>`).join('')}
+        `;
+        document.body.appendChild(listDiv);
         
-        pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'normal');
-        let yPos = 35;
-        
-        bookedBooths.forEach(booth => {
-          if (yPos > pageHeight - 15) {
-            pdf.addPage();
-            yPos = 20;
-          }
-          pdf.text(`${booth.id} - ${booth.company}`, 15, yPos);
-          yPos += 7;
+        const listCanvas = await html2canvas(listDiv, {
+          scale: 2,
+          backgroundColor: '#ffffff',
         });
+        document.body.removeChild(listDiv);
+        
+        const listImgData = listCanvas.toDataURL('image/png');
+        const listWidth = 190;
+        const listHeight = (listCanvas.height * listWidth) / listCanvas.width;
+        
+        if (yPosition + listHeight > 280) {
+          pdf.addPage();
+          yPosition = 15;
+        }
+        
+        pdf.addImage(listImgData, 'PNG', 10, yPosition, listWidth, listHeight);
       }
       
       pdf.save(`${selectedEvent.name}_карта_стендов.pdf`);
@@ -138,7 +165,7 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
     } catch (error) {
       toast({
         title: 'Ошибка',
-        description: error instanceof Error ? error.message : 'Не удалось создать PDF',
+        description: 'Не удалось создать PDF',
         variant: 'destructive',
       });
     }

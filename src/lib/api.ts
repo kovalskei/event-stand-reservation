@@ -45,6 +45,7 @@ export const api = {
   },
 
   async getEvents(userEmail: string): Promise<Event[]> {
+    console.log('Fetching events for user:', userEmail);
     const response = await fetch(API_URL, {
       method: 'GET',
       headers: {
@@ -56,7 +57,9 @@ export const api = {
       throw new Error('Failed to fetch events');
     }
     
-    return response.json();
+    const data = await response.json();
+    console.log('API response:', data);
+    return data;
   },
 
   async createEvent(userEmail: string, data: { name: string; date: string; location: string }): Promise<Event> {

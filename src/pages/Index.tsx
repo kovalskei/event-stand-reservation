@@ -4,6 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
+import { LoginDialog } from '@/components/LoginDialog';
+import { api } from '@/lib/api';
 import Icon from '@/components/ui/icon';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -93,6 +96,8 @@ const defaultPositions: BoothPosition[] = [
 ];
 
 export default function Index() {
+  const { userEmail, logout } = useAuth();
+  const [showLoginDialog, setShowLoginDialog] = useState(!userEmail);
   const [events] = useState<Event[]>(mockEvents);
   const [selectedEvent, setSelectedEvent] = useState<Event>(mockEvents[0]);
   const [booths, setBooths] = useState<Booth[]>(initialBooths);
@@ -138,6 +143,12 @@ export default function Index() {
   const [snapEnabled, setSnapEnabled] = useState(true);
 
   const SNAP_THRESHOLD = 1.5;
+
+  useEffect(() => {
+    if (!userEmail) {
+      setShowLoginDialog(true);
+    }
+  }, [userEmail]);
 
   useEffect(() => {
     const handleMouseUp = () => {
@@ -497,6 +508,44 @@ export default function Index() {
     };
   }, [autoSync, sheetUrl]);
 
+  const saveToDatabase = async () => {
+    if (!userEmail) {
+      setShowLoginDialog(true);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const boothsData = positions.map(pos => {
+        const booth = booths.find(b => b.id === pos.id);
+        return {
+          ...pos,
+          status: booth?.status || 'available',
+          company: booth?.company,
+          contactPerson: booth?.contact,
+          phone: booth?.contact,
+          email: booth?.contact,
+          notes: `${booth?.price || ''} ${booth?.size || ''}`.trim(),
+        };
+      });
+
+      await api.saveBooths(parseInt(selectedEvent.id), boothsData);
+      
+      toast({
+        title: 'Данные сохранены',
+        description: 'Стенды успешно сохранены в базе данных',
+      });
+    } catch (error) {
+      toast({
+        title: 'Ошибка сохранения',
+        description: 'Не удалось сохранить данные в базу',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const savePositions = () => {
     localStorage.setItem(`booth-positions-${selectedEvent.id}`, JSON.stringify(positions));
     toast({
@@ -504,6 +553,7 @@ export default function Index() {
       description: 'Разметка стендов успешно сохранена',
     });
     setEditMode(false);
+    saveToDatabase();
   };
 
   const saveMapUrl = () => {
@@ -831,6 +881,21 @@ export default function Index() {
                 </option>
               ))}
             </select>
+            
+            {userEmail ? (
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-sm text-gray-600">{userEmail}</span>
+                <Button onClick={logout} variant="outline" size="sm">
+                  <Icon name="LogOut" size={16} className="mr-2" />
+                  Выйти
+                </Button>
+              </div>
+            ) : (
+              <Button onClick={() => setShowLoginDialog(true)} size="sm" className="ml-auto">
+                <Icon name="LogIn" size={16} className="mr-2" />
+                Войти
+              </Button>
+            )}
           </div>
         </header>
 
@@ -1542,6 +1607,8 @@ export default function Index() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <LoginDialog open={showLoginDialog} onOpenChange={setShowLoginDialog} />
     </div>
   );
 }

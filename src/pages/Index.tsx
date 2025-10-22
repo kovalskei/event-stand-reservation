@@ -236,31 +236,45 @@ export default function Index() {
       try {
         const data = await api.getBooths(Number(selectedEvent.id));
         
-        if (data.booths && data.booths.length > 0) {
-          setBooths(data.booths);
-          const boothPositions = data.booths.map(b => ({
-            id: b.id,
-            x: b.x,
-            y: b.y,
-            width: b.width,
-            height: b.height,
-            rotation: b.rotation || 0
-          }));
-          setPositions(boothPositions);
-          userStorage.saveBoothPositions(userEmail, selectedEvent.id, boothPositions);
-        } else {
-          setBooths([]);
-          setPositions([]);
-        }
-        
         if (data.sheet_url) {
           setSheetUrl(data.sheet_url);
-          userStorage.saveSheetUrl(userEmail, selectedEvent.id, data.sheet_url);
+          
+          try {
+            const response = await fetch('https://functions.poehali.dev/0a047b83-702c-4547-ae04-ff2dd383ee27', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sheetUrl: data.sheet_url }),
+            });
+            
+            if (response.ok) {
+              const sheetData = await response.json();
+              setBooths(sheetData.booths);
+              setLastSyncTime(new Date().toLocaleTimeString('ru-RU'));
+            }
+          } catch (error) {
+            console.error('Failed to auto-load sheet data:', error);
+          }
         } else {
           setSheetUrl('');
+          
+          if (data.booths && data.booths.length > 0) {
+            setBooths(data.booths);
+            const boothPositions = data.booths.map(b => ({
+              id: b.id,
+              x: b.x,
+              y: b.y,
+              width: b.width,
+              height: b.height,
+              rotation: b.rotation || 0
+            }));
+            setPositions(boothPositions);
+          } else {
+            setBooths([]);
+            setPositions([]);
+          }
         }
       } catch (error) {
-        console.error('Failed to load from DB, using localStorage:', error);
+        console.error('Failed to load from DB:', error);
         setBooths([]);
         setPositions([]);
         setSheetUrl('');

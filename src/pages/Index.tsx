@@ -534,9 +534,6 @@ export default function Index() {
           ...prev,
           mapUrl: data.mapUrl
         }));
-        if (userEmail) {
-          userStorage.saveMapUrl(userEmail, selectedEvent.id, data.mapUrl);
-        }
       }
       
       if (userEmail) {
@@ -657,9 +654,6 @@ export default function Index() {
         throw new Error('Не удалось сохранить карту');
       }
 
-      if (userEmail) {
-        userStorage.saveMapUrl(userEmail, selectedEvent.id, selectedEvent.mapUrl);
-      }
       setMapChanged(false);
       toast({
         title: 'Карта сохранена',

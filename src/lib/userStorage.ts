@@ -10,7 +10,6 @@ interface BoothPosition {
 interface UserEventData {
   boothPositions: BoothPosition[];
   sheetUrl: string;
-  mapUrl: string;
   lastSync?: string;
 }
 
@@ -40,7 +39,24 @@ export const userStorage = {
 
   saveUserData(email: string, data: UserData): void {
     const key = this.getUserKey(email);
-    localStorage.setItem(key, JSON.stringify(data));
+    try {
+      localStorage.setItem(key, JSON.stringify(data));
+    } catch (error) {
+      console.warn('localStorage quota exceeded, using minimal storage');
+      const minimalData: UserData = { events: {} };
+      Object.entries(data.events).forEach(([eventId, eventData]) => {
+        minimalData.events[eventId] = {
+          boothPositions: eventData.boothPositions,
+          sheetUrl: eventData.sheetUrl,
+          lastSync: eventData.lastSync
+        };
+      });
+      try {
+        localStorage.setItem(key, JSON.stringify(minimalData));
+      } catch {
+        console.error('Failed to save even minimal data to localStorage');
+      }
+    }
   },
 
   getEventData(email: string, eventId: string): UserEventData | null {
@@ -52,8 +68,7 @@ export const userStorage = {
     const userData = this.getUserData(email);
     const currentEventData = userData.events[eventId] || {
       boothPositions: [],
-      sheetUrl: '',
-      mapUrl: ''
+      sheetUrl: ''
     };
 
     userData.events[eventId] = {
@@ -74,7 +89,8 @@ export const userStorage = {
   },
 
   saveMapUrl(email: string, eventId: string, mapUrl: string): void {
-    this.saveEventData(email, eventId, { mapUrl });
+    // Map URLs are stored in database only, not in localStorage to avoid quota issues
+    console.log('Map URL saved to database:', mapUrl);
   },
 
   clearUserData(email: string): void {

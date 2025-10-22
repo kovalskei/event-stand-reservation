@@ -701,6 +701,10 @@ export default function Index() {
     });
 
     try {
+      const fontResponse = await fetch('https://fonts.gstatic.com/s/roboto/v30/KFOmCnqEu92Fr1Mu4mxK.woff');
+      const fontBlob = await fontResponse.arrayBuffer();
+      const fontBase64 = btoa(String.fromCharCode(...new Uint8Array(fontBlob)));
+
       const clone = mapElement.cloneNode(true) as HTMLElement;
       clone.style.transform = 'none';
       clone.style.position = 'absolute';
@@ -724,12 +728,14 @@ export default function Index() {
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       
+      pdf.addFileToVFS('Roboto-Regular.ttf', fontBase64);
+      pdf.addFont('Roboto-Regular.ttf', 'Roboto', 'normal');
+      pdf.setFont('Roboto');
+      
       pdf.setFontSize(20);
-      pdf.setFont('helvetica', 'bold');
       pdf.text(selectedEvent.name, 105, 15, { align: 'center' });
       
       pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'normal');
       pdf.text(`${selectedEvent.date} • ${selectedEvent.location}`, 105, 23, { align: 'center' });
       
       const imgData = canvas.toDataURL('image/jpeg', 0.7);
@@ -748,12 +754,10 @@ export default function Index() {
         }
         
         pdf.setFontSize(14);
-        pdf.setFont('helvetica', 'bold');
         pdf.text('Забронированные стенды:', 10, yPosition);
         yPosition += 8;
         
         pdf.setFontSize(11);
-        pdf.setFont('helvetica', 'normal');
         bookedBooths.forEach((booth) => {
           if (yPosition > 280) {
             pdf.addPage();

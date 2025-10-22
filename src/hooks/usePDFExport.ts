@@ -47,26 +47,13 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths }: UsePDFExpo
       });
       document.body.removeChild(headerDiv);
 
-      const clone = mapElement.cloneNode(true) as HTMLElement;
-      clone.style.transform = 'none';
-      clone.style.position = 'absolute';
-      clone.style.left = '-9999px';
-      clone.style.top = '0';
-      clone.style.width = '2400px';
-      clone.style.height = '1200px';
-      document.body.appendChild(clone);
-      
-      const mapCanvas = await html2canvas(clone, {
-        scale: 1,
+      const mapCanvas = await html2canvas(mapElement, {
+        scale: 2,
         backgroundColor: '#ffffff',
         logging: false,
         useCORS: true,
         allowTaint: true,
-        width: 2400,
-        height: 1200,
       });
-
-      document.body.removeChild(clone);
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       

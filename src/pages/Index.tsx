@@ -11,6 +11,7 @@ import { api } from '@/lib/api';
 import { userStorage } from '@/lib/userStorage';
 import Icon from '@/components/ui/icon';
 import { usePDFExport } from '@/hooks/usePDFExport';
+import { logImageDimensions } from '@/utils/getImageDimensions';
 
 type BoothStatus = 'available' | 'booked' | 'unavailable';
 
@@ -144,6 +145,11 @@ export default function Index() {
       loadEventsFromBackend();
     }
   }, [userEmail]);
+
+  // Log image dimensions for debugging
+  useEffect(() => {
+    logImageDimensions('https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png');
+  }, []);
 
   const loadEventsFromBackend = async () => {
     if (!userEmail) return;

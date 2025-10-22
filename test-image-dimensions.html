@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Dimensions Test</title>
+</head>
+<body>
+    <h1>Image Dimensions Test</h1>
+    <div id="results"></div>
+    <img id="testImage" src="https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png" style="display:none;">
+    
+    <script>
+        const img = document.getElementById('testImage');
+        const resultsDiv = document.getElementById('results');
+        
+        img.onload = function() {
+            const width = img.naturalWidth;
+            const height = img.naturalHeight;
+            const aspectRatio = width / height;
+            const containerAspectRatio = 1920 / 850;
+            
+            resultsDiv.innerHTML = `
+                <h2>Results:</h2>
+                <p><strong>Image Width:</strong> ${width}px</p>
+                <p><strong>Image Height:</strong> ${height}px</p>
+                <p><strong>Image Aspect Ratio:</strong> ${aspectRatio.toFixed(4)} (${width}/${height})</p>
+                <p><strong>Container Aspect Ratio:</strong> ${containerAspectRatio.toFixed(4)} (1920/850)</p>
+                <hr>
+                <h3>Analysis:</h3>
+                <p>Container is ${containerAspectRatio > aspectRatio ? 'wider' : 'taller'} than the image.</p>
+                <p>When using object-contain:</p>
+                <ul>
+                    <li>Image will be constrained by ${containerAspectRatio > aspectRatio ? 'height' : 'width'}</li>
+                    <li>${containerAspectRatio > aspectRatio ? 'Horizontal' : 'Vertical'} letterboxing will occur</li>
+                </ul>
+            `;
+        };
+        
+        img.onerror = function() {
+            resultsDiv.innerHTML = '<p style="color:red;">Failed to load image. Check CORS settings.</p>';
+        };
+    </script>
+</body>
+</html>

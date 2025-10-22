@@ -87,6 +87,33 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       const mapX = (pageWidth - mapWidth) / 2;
       const mapY = 30;
       
+      const WEB_CONTAINER_ASPECT = 1920 / 850;
+      const imageAspect = mapImg.width / mapImg.height;
+      
+      let containerWidth: number;
+      let containerHeight: number;
+      let imageOffsetX = 0;
+      let imageOffsetY = 0;
+      let imageRenderWidth: number;
+      let imageRenderHeight: number;
+      
+      if (imageAspect > WEB_CONTAINER_ASPECT) {
+        containerWidth = 1920;
+        containerHeight = 850;
+        imageRenderWidth = containerWidth;
+        imageRenderHeight = containerWidth / imageAspect;
+        imageOffsetY = (containerHeight - imageRenderHeight) / 2;
+      } else {
+        containerWidth = 1920;
+        containerHeight = 850;
+        imageRenderHeight = containerHeight;
+        imageRenderWidth = containerHeight * imageAspect;
+        imageOffsetX = (containerWidth - imageRenderWidth) / 2;
+      }
+      
+      const scaleX = mapImg.width / imageRenderWidth;
+      const scaleY = mapImg.height / imageRenderHeight;
+      
       const canvas = document.createElement('canvas');
       canvas.width = mapImg.width;
       canvas.height = mapImg.height;
@@ -98,10 +125,15 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
         const booth = booths.find(b => b.id === pos.id);
         if (!booth) return;
         
-        const x = (pos.x / 100) * mapImg.width;
-        const y = (pos.y / 100) * mapImg.height;
-        const w = (pos.width / 100) * mapImg.width;
-        const h = (pos.height / 100) * mapImg.height;
+        const webX = (pos.x / 100) * containerWidth - imageOffsetX;
+        const webY = (pos.y / 100) * containerHeight - imageOffsetY;
+        const webW = (pos.width / 100) * containerWidth;
+        const webH = (pos.height / 100) * containerHeight;
+        
+        const x = webX * scaleX;
+        const y = webY * scaleY;
+        const w = webW * scaleX;
+        const h = webH * scaleY;
         
         if (booth.status === 'booked') {
           ctx.fillStyle = 'rgba(22, 163, 74, 0.3)';

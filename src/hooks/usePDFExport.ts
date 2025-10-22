@@ -44,24 +44,7 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       const pageWidth = pdf.internal.pageSize.getWidth();
       const pageHeight = pdf.internal.pageSize.getHeight();
       
-      const headerDiv = document.createElement('div');
-      headerDiv.style.cssText = 'position: absolute; left: -9999px; width: 800px; padding: 20px; font-family: Arial, sans-serif; background: white; text-align: center;';
-      headerDiv.innerHTML = `
-        <h1 style="font-size: 32px; margin: 0 0 10px 0; font-weight: bold; color: #000;">${selectedEvent.name}</h1>
-        <p style="font-size: 18px; margin: 0; color: #666;">${selectedEvent.date} • ${selectedEvent.location}</p>
-      `;
-      document.body.appendChild(headerDiv);
-      
-      const headerCanvas = await html2canvas(headerDiv, {
-        scale: 2,
-        backgroundColor: '#ffffff',
-      });
-      document.body.removeChild(headerDiv);
-      
-      const headerImgData = headerCanvas.toDataURL('image/png');
-      const headerWidth = 200;
-      const headerHeight = (headerCanvas.height * headerWidth) / headerCanvas.width;
-      pdf.addImage(headerImgData, 'PNG', (pageWidth - headerWidth) / 2, 5, headerWidth, headerHeight);
+
       
       const mapImg = new Image();
       mapImg.crossOrigin = 'anonymous';
@@ -127,6 +110,23 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       
       ctx.drawImage(mapImg, 0, 0);
       
+      const headerFontSize = Math.max(40, mapImg.width / 60);
+      const subHeaderFontSize = Math.max(24, mapImg.width / 100);
+      const headerY = Math.max(60, mapImg.height / 20);
+      
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.fillRect(0, 0, mapImg.width, headerY + 40);
+      
+      ctx.fillStyle = '#000';
+      ctx.font = `bold ${headerFontSize}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'top';
+      ctx.fillText(selectedEvent.name, mapImg.width / 2, 20);
+      
+      ctx.fillStyle = '#666';
+      ctx.font = `${subHeaderFontSize}px Arial`;
+      ctx.fillText(`${selectedEvent.date} • ${selectedEvent.location}`, mapImg.width / 2, headerY);
+      
       positions.forEach(pos => {
         const booth = booths.find(b => b.id === pos.id);
         if (!booth) return;
@@ -158,12 +158,15 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
         ctx.rotate((rotation * Math.PI) / 180);
         ctx.translate(-centerX, -centerY);
         
-        if (booth.status === 'booked') {
-          ctx.fillStyle = 'rgba(22, 163, 74, 0.3)';
+        if (booth.status === 'available') {
+          ctx.fillStyle = 'rgba(22, 163, 74, 0.4)';
           ctx.strokeStyle = 'rgb(22, 163, 74)';
+        } else if (booth.status === 'booked') {
+          ctx.fillStyle = 'rgba(220, 38, 38, 0.4)';
+          ctx.strokeStyle = 'rgb(220, 38, 38)';
         } else {
-          ctx.fillStyle = 'rgba(59, 130, 246, 0.3)';
-          ctx.strokeStyle = 'rgb(59, 130, 246)';
+          ctx.fillStyle = 'rgba(100, 116, 139, 0.4)';
+          ctx.strokeStyle = 'rgb(100, 116, 139)';
         }
         
         const lineWidth = Math.max(2, mapImg.width / 600);
@@ -183,7 +186,7 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
       });
       
       const compositeImgData = canvas.toDataURL('image/jpeg', 0.85);
-      pdf.addImage(compositeImgData, 'JPEG', mapX, mapY, mapWidth, mapHeight);
+      pdf.addImage(compositeImgData, 'JPEG', mapX, 10, mapWidth, mapHeight);
       
       const bookedBooths = booths.filter(b => b.status === 'booked' && b.company);
       

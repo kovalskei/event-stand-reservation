@@ -638,6 +638,16 @@ export default function Index() {
 
   const saveMapUrl = async () => {
     try {
+      if (selectedEvent.mapUrl.startsWith('data:')) {
+        toast({
+          title: 'Внимание',
+          description: 'Карта сохранена только локально. Загрузите изображение с внешнего URL для сохранения в базу данных.',
+          variant: 'destructive',
+        });
+        setMapChanged(false);
+        return;
+      }
+
       const response = await fetch('https://functions.poehali.dev/c9b46bff-046e-40ca-b12e-632b8ad7462f', {
         method: 'POST',
         headers: {
@@ -1591,7 +1601,28 @@ export default function Index() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Выберите изображение</label>
+              <label className="text-sm font-medium text-gray-700">URL изображения</label>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  placeholder="https://example.com/map.png"
+                  className="flex-1 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition-colors"
+                  onChange={(e) => {
+                    if (e.target.value.trim()) {
+                      setSelectedEvent(prev => ({ ...prev, mapUrl: e.target.value }));
+                      setEvents(prev => prev.map(ev => 
+                        ev.id === selectedEvent.id ? { ...ev, mapUrl: e.target.value } : ev
+                      ));
+                      setMapChanged(true);
+                    }
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gray-500">Или загрузите файл ниже (будет только для просмотра)</p>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">Загрузить с компьютера</label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -1599,6 +1630,7 @@ export default function Index() {
                 onChange={handleMapUpload}
                 className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-primary focus:outline-none transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-primary/80 cursor-pointer"
               />
+              <p className="text-xs text-red-500">⚠️ Локальные файлы не сохраняются в БД, используйте URL</p>
             </div>
 
             <div className="p-4 bg-primary/10 rounded-lg border-2 border-primary/20">
@@ -1606,10 +1638,10 @@ export default function Index() {
                 <Icon name="Info" size={20} className="text-primary mt-0.5 flex-shrink-0" />
                 <div className="text-xs text-gray-600">
                   <p className="font-medium text-gray-900 mb-2">Рекомендации:</p>
+                  <p>• Используйте URL изображения с CDN (например: https://cdn.poehali.dev/files/...)</p>
+                  <p>• Или загрузите через сторонний хостинг (imgur.com, imgbb.com)</p>
                   <p>• Формат: PNG, JPG, JPEG</p>
                   <p>• Соотношение сторон: 1920×850 (широкоформатное)</p>
-                  <p>• Максимальный размер: 10 МБ</p>
-                  <p>• Изображение будет загружено на сервер poehali.dev</p>
                 </div>
               </div>
             </div>

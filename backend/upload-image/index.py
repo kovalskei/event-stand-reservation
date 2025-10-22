@@ -79,11 +79,12 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 'body': json.dumps({'error': 'Invalid base64 data'})
             }
         
-        # For now, return the data URL directly
-        # In production, this should upload to S3 or CDN
-        image_url = f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}"
+        # Return data URL - will be stored temporarily in frontend only
+        # Maps should be uploaded to external CDN before using this
         filename = f"map_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
         
+        # Just return the data URL as-is
+        # Frontend should handle uploading to proper CDN
         return {
             'statusCode': 200,
             'headers': {
@@ -92,8 +93,9 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
             },
             'isBase64Encoded': False,
             'body': json.dumps({
-                'url': image_url,
-                'filename': filename
+                'url': f"data:image/png;base64,{base64.b64encode(image_bytes).decode('utf-8')}",
+                'filename': filename,
+                'warning': 'This is a data URL, upload to CDN before saving to database'
             })
         }
         

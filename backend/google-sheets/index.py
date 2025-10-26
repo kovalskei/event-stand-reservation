@@ -102,6 +102,7 @@ def fetch_sheet_data(sheet_id: str) -> Dict[str, Any]:
     
     response = requests.get(csv_url, timeout=10)
     response.raise_for_status()
+    response.encoding = 'utf-8'
     
     lines = response.text.strip().split('\n')
     booths = []

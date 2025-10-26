@@ -43,26 +43,6 @@ export default function BoothDialog({ booth, onClose }: BoothDialogProps) {
             </Badge>
           </div>
 
-          {booth?.size && (
-            <div className="p-4 bg-slate-50 rounded-lg space-y-2">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Icon name="Maximize" size={18} />
-                <span className="text-sm font-medium">Размер</span>
-              </div>
-              <p className="text-gray-900 font-semibold pl-6">{booth.size}</p>
-            </div>
-          )}
-
-          {booth?.price && (
-            <div className="p-4 bg-slate-50 rounded-lg space-y-2">
-              <div className="flex items-center gap-2 text-gray-600">
-                <Icon name="DollarSign" size={18} />
-                <span className="text-sm font-medium">Стоимость</span>
-              </div>
-              <p className="text-gray-900 font-semibold pl-6">{booth.price}</p>
-            </div>
-          )}
-
           {booth?.status === 'booked' && (
             <>
               <div className="p-4 bg-slate-50 rounded-lg space-y-2">
@@ -81,6 +61,26 @@ export default function BoothDialog({ booth, onClose }: BoothDialogProps) {
                 <p className="text-gray-900 font-semibold pl-6">{booth.contact}</p>
               </div>
             </>
+          )}
+
+          {booth?.size && (
+            <div className="p-4 bg-slate-50 rounded-lg space-y-2">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Icon name="Maximize" size={18} />
+                <span className="text-sm font-medium">Размер стенда</span>
+              </div>
+              <p className="text-gray-900 font-semibold pl-6">{booth.size}</p>
+            </div>
+          )}
+
+          {booth?.price && (
+            <div className="p-4 bg-slate-50 rounded-lg space-y-2">
+              <div className="flex items-center gap-2 text-gray-600">
+                <Icon name="DollarSign" size={18} />
+                <span className="text-sm font-medium">Стоимость</span>
+              </div>
+              <p className="text-gray-900 font-semibold pl-6">{booth.price}</p>
+            </div>
           )}
         </div>
       </DialogContent>

@@ -143,10 +143,10 @@ def fetch_sheet_data(sheet_id: str) -> Dict[str, Any]:
             booth['company'] = parts[2].strip().strip('"')
         
         if len(parts) > 3 and parts[3].strip():
-            booth['contact'] = parts[3].strip().strip('"')
+            booth['size'] = parts[3].strip().strip('"')
         
         if len(parts) > 4 and parts[4].strip():
-            booth['size'] = parts[4].strip().strip('"')
+            booth['contact'] = parts[4].strip().strip('"')
         
         if len(parts) > 5 and parts[5].strip():
             booth['price'] = parts[5].strip().strip('"')

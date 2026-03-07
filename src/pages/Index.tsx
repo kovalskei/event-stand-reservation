@@ -48,15 +48,7 @@ const mockEvents: Event[] = [
     name: 'Выставка 2025',
     date: '15-20 марта 2025',
     location: 'Павильон 1',
-    mapUrl: 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
-    sheetId: '',
-  },
-  {
-    id: '2',
-    name: 'Tech Forum 2025',
-    date: '5-10 апреля 2025',
-    location: 'Павильон 2',
-    mapUrl: 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+    mapUrl: '',
     sheetId: '',
   },
 ];
@@ -404,7 +396,7 @@ export default function Index() {
         date: newEvent.date || '',
         location: newEvent.location || '',
         description: newEvent.description || '',
-        mapUrl: newEvent.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+        mapUrl: newEvent.map_url || '',
         sheetId: '',
       };
       setEvents([...events, mappedEvent]);
@@ -470,7 +462,7 @@ export default function Index() {
         date: newEvent.date || '',
         location: newEvent.location || '',
         description: newEvent.description || '',
-        mapUrl: newEvent.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+        mapUrl: newEvent.map_url || '',
         sheetId: '',
       };
       setEvents(prev => [...prev, mappedEvent]);

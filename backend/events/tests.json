@@ -56,6 +56,22 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Duplicate event",
+      "method": "POST",
+      "headers": {
+        "X-User-Email": "test@example.com"
+      },
+      "body": {
+        "action": "duplicate_event",
+        "event_id": 1
+      },
+      "expectedStatus": 201,
+      "expectedBody": {
+        "name": "string"
+      },
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Save booths",
       "method": "POST",
       "body": {

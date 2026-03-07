@@ -227,6 +227,49 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'isBase64Encoded': False
                 }
 
+            if action == 'duplicate_event':
+                event_id = body_data.get('event_id')
+                if not event_id:
+                    return {
+                        'statusCode': 400,
+                        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                        'body': json.dumps({'error': 'event_id is required'}),
+                        'isBase64Encoded': False
+                    }
+                cur.execute("SELECT * FROM t_p5249081_event_stand_reservat.events WHERE id = %s", (event_id,))
+                src_event = cur.fetchone()
+                if not src_event:
+                    return {
+                        'statusCode': 404,
+                        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                        'body': json.dumps({'error': 'Event not found'}),
+                        'isBase64Encoded': False
+                    }
+                cur.execute(
+                    "INSERT INTO t_p5249081_event_stand_reservat.events (user_id, name, date, location, map_url, description) VALUES (%s, %s, %s, %s, %s, %s) RETURNING *",
+                    (src_event['user_id'], src_event['name'] + ' (копия)', src_event['date'], src_event['location'], src_event['map_url'], src_event['description'])
+                )
+                conn.commit()
+                new_event = cur.fetchone()
+                new_event_id = new_event['id']
+                cur.execute("SELECT * FROM booths WHERE event_id = %s", (event_id,))
+                src_booths = cur.fetchall()
+                for booth in src_booths:
+                    cur.execute(
+                        """INSERT INTO booths (id, event_id, x, y, width, height, rotation, status, company, contact_person, phone, email, notes)
+                           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                        (booth['id'], new_event_id, booth['x'], booth['y'], booth['width'],
+                         booth['height'], booth['rotation'], booth['status'], booth['company'],
+                         booth['contact_person'], booth['phone'], booth['email'], booth['notes'])
+                    )
+                conn.commit()
+                return {
+                    'statusCode': 201,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps(dict(new_event), default=str),
+                    'isBase64Encoded': False
+                }
+
             if action == 'update_event':
                 event_id = body_data.get('event_id')
                 name = body_data.get('name')

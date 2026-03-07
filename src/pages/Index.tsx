@@ -455,6 +455,27 @@ export default function Index() {
     }
   };
 
+  const handleDuplicateEvent = async (eventId: string) => {
+    if (!userEmail) return;
+    try {
+      const newEvent = await api.duplicateEvent(userEmail, eventId);
+      const mappedEvent = {
+        id: String(newEvent.id),
+        name: newEvent.name,
+        date: newEvent.date || '',
+        location: newEvent.location || '',
+        description: newEvent.description || '',
+        mapUrl: newEvent.map_url || 'https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png',
+        sheetId: '',
+      };
+      setEvents(prev => [...prev, mappedEvent]);
+      setSelectedEvent(mappedEvent);
+      toast({ title: 'Мероприятие продублировано', description: `Создана копия "${mappedEvent.name}"` });
+    } catch {
+      toast({ title: 'Ошибка', description: 'Не удалось продублировать мероприятие', variant: 'destructive' });
+    }
+  };
+
   const handleDeleteEvent = async (eventId: string) => {
     if (!confirm('Удалить мероприятие? Это действие нельзя отменить.')) return;
     try {
@@ -1220,6 +1241,15 @@ export default function Index() {
                 >
                   <Icon name="Edit" size={16} className="mr-2" />
                   Редактировать
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDuplicateEvent(selectedEvent.id)}
+                  className="h-auto px-3"
+                >
+                  <Icon name="Copy" size={16} className="mr-2" />
+                  Дублировать
                 </Button>
                 <Button
                   size="sm"

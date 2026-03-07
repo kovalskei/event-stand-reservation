@@ -148,6 +148,16 @@ export const api = {
     return response.json();
   },
 
+  async duplicateEvent(userEmail: string, eventId: string): Promise<Event> {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-User-Email': userEmail },
+      body: JSON.stringify({ action: 'duplicate_event', event_id: eventId }),
+    });
+    if (!response.ok) throw new Error('Failed to duplicate event');
+    return response.json();
+  },
+
   async deleteEvent(eventId: string): Promise<{ success: boolean }> {
     const response = await fetch(API_URL, {
       method: 'POST',

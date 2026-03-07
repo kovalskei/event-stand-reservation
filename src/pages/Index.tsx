@@ -1408,8 +1408,8 @@ export default function Index() {
                   </Button>
                 </div>
               ) : (
-                <div className="flex gap-2 items-center">
-                  <div className="flex items-center gap-2 mr-2">
+                <div className="flex flex-wrap gap-2 items-center">
+                  <div className="flex items-center gap-1">
                     <Button 
                       onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} 
                       variant="outline" 
@@ -1418,7 +1418,7 @@ export default function Index() {
                     >
                       <Icon name="ZoomOut" size={16} />
                     </Button>
-                    <span className="text-sm text-gray-600 font-medium min-w-[60px] text-center">
+                    <span className="text-sm text-gray-600 font-medium min-w-[48px] text-center">
                       {Math.round(zoom * 100)}%
                     </span>
                     <Button 
@@ -1434,27 +1434,28 @@ export default function Index() {
                       variant="outline" 
                       size="sm"
                       title="Сбросить масштаб"
+                      className="px-2"
                     >
                       <Icon name="Maximize2" size={16} />
                     </Button>
                   </div>
-                  <Button onClick={() => setShowMapUploadDialog(true)} variant="outline" size="sm">
-                    <Icon name="Upload" size={16} className="mr-2" />
-                    Загрузить карту
+                  <Button onClick={() => setShowMapUploadDialog(true)} variant="outline" size="sm" className="px-2 md:px-3">
+                    <Icon name="Upload" size={16} className="md:mr-2" />
+                    <span className="hidden md:inline">Загрузить карту</span>
                   </Button>
                   {mapChanged && (
-                    <Button onClick={saveMapUrl} size="sm" className="bg-booth-available hover:bg-booth-available/80">
-                      <Icon name="Save" size={16} className="mr-2" />
-                      Сохранить карту
+                    <Button onClick={saveMapUrl} size="sm" className="bg-booth-available hover:bg-booth-available/80 px-2 md:px-3">
+                      <Icon name="Save" size={16} className="md:mr-2" />
+                      <span className="hidden md:inline">Сохранить карту</span>
                     </Button>
                   )}
-                  <Button onClick={exportToPDF} variant="outline" size="sm">
-                    <Icon name="FileDown" size={16} className="mr-2" />
-                    Экспорт в PDF
+                  <Button onClick={exportToPDF} variant="outline" size="sm" className="px-2 md:px-3">
+                    <Icon name="FileDown" size={16} className="md:mr-2" />
+                    <span className="hidden md:inline">Экспорт в PDF</span>
                   </Button>
-                  <Button onClick={() => setEditMode(true)} variant="outline" size="sm">
-                    <Icon name="Edit" size={16} className="mr-2" />
-                    Настроить разметку
+                  <Button onClick={() => setEditMode(true)} variant="outline" size="sm" className="px-2 md:px-3">
+                    <Icon name="Edit" size={16} className="md:mr-2" />
+                    <span className="hidden md:inline">Настроить разметку</span>
                   </Button>
                 </div>
               )}
@@ -1824,15 +1825,16 @@ export default function Index() {
                 );
               })}
             </div>
-            <div className="absolute bottom-6 left-6 bg-white/90 px-3 py-2 rounded-lg border-2 border-gray-200 text-xs text-gray-600">
-              💡 Колёсико мыши для зума • Зажмите левую кнопку для перемещения карты
+            <div className="absolute bottom-4 left-4 bg-white/90 px-3 py-2 rounded-lg border-2 border-gray-200 text-xs text-gray-600">
+              <span className="hidden md:inline">💡 Колёсико мыши для зума • Зажмите левую кнопку для перемещения карты</span>
+              <span className="md:hidden">💡 Два пальца — масштаб • Один палец — перемещение</span>
             </div>
           </div>
         </Card>
       </div>
 
       <Dialog open={!!selectedBooth} onOpenChange={() => setSelectedBooth(null)}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[95vw] sm:max-w-md max-h-[90svh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               <Icon name="MapPin" size={24} className="text-primary" />
@@ -1920,7 +1922,7 @@ export default function Index() {
       </Dialog>
 
       <Dialog open={showSheetDialog} onOpenChange={setShowSheetDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90svh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               <Icon name="Sheet" size={24} className="text-primary" />
@@ -2000,7 +2002,7 @@ export default function Index() {
       </Dialog>
 
       <Dialog open={showMapUploadDialog} onOpenChange={setShowMapUploadDialog}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="w-[95vw] sm:max-w-lg max-h-[90svh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-2xl flex items-center gap-2">
               <Icon name="Upload" size={24} className="text-primary" />

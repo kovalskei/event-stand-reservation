@@ -126,6 +126,8 @@ export default function Index() {
   const [isMousePanning, setIsMousePanning] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const pinchStartRef = useRef<{ dist: number; zoom: number; panX: number; panY: number; midX: number; midY: number } | null>(null);
   const { toast } = useToast();
   const { exportToPDF } = usePDFExport({ containerRef, selectedEvent, booths, positions });
   
@@ -1145,32 +1147,35 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
-        <header className="mb-6 animate-fade-in">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Icon name="CalendarDays" size={32} className="text-primary" />
-              <h1 className="text-4xl font-bold text-gray-900">Бронирование стендов</h1>
+      <div className="container mx-auto px-3 md:px-4 py-4 md:py-8 max-w-7xl">
+        <header className="mb-4 md:mb-6 animate-fade-in">
+          <div className="flex items-center justify-between mb-4 gap-2">
+            <div className="flex items-center gap-2">
+              <Icon name="CalendarDays" size={28} className="text-primary shrink-0" />
+              <h1 className="text-xl md:text-4xl font-bold text-gray-900 leading-tight">Бронирование стендов</h1>
             </div>
-            <div className="flex items-center gap-3">
-              <Button onClick={() => setShowSheetDialog(true)} variant="outline">
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setShowSheetDialog(true)} variant="outline" size="sm" className="hidden md:flex">
                 <Icon name="Sheet" size={16} className="mr-2" />
                 Синхронизация с Google Таблицами
+              </Button>
+              <Button onClick={() => setShowSheetDialog(true)} variant="outline" size="sm" className="md:hidden px-2">
+                <Icon name="Sheet" size={16} />
               </Button>
               <UserProfile email={userEmail} onLogout={logout} />
             </div>
           </div>
 
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-4">
-              <label className="text-sm font-medium text-gray-600">Мероприятие:</label>
+            <div className="flex flex-wrap items-center gap-2 md:gap-4">
+              <label className="text-sm font-medium text-gray-600 shrink-0">Мероприятие:</label>
               <select
                 value={selectedEvent.id}
                 onChange={(e) => {
                   const event = events.find(ev => ev.id === e.target.value);
                   if (event) setSelectedEvent(event);
                 }}
-                className="px-4 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 font-medium focus:border-primary focus:outline-none transition-colors flex-1"
+                className="px-3 py-2 border-2 border-gray-200 rounded-lg bg-white text-gray-900 font-medium focus:border-primary focus:outline-none transition-colors flex-1 min-w-0 text-sm"
               >
                 {events.map(event => (
                   <option key={event.id} value={event.id}>
@@ -1268,7 +1273,7 @@ export default function Index() {
           </div>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6 mb-4 md:mb-8">
           <Card className="p-6 animate-scale-in bg-white border-2 border-primary/20">
             <div className="flex items-center gap-3">
               <div className="p-3 bg-primary/10 rounded-lg">
@@ -1318,19 +1323,19 @@ export default function Index() {
           </Card>
         </div>
 
-        <Card className="p-8 bg-white shadow-xl animate-fade-in">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Интерактивная карта павильона</h2>
-            <div className="flex gap-4 items-center">
+        <Card className="p-4 md:p-8 bg-white shadow-xl animate-fade-in">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-4 md:mb-6">
+            <h2 className="text-lg md:text-2xl font-bold text-gray-900">Интерактивная карта павильона</h2>
+            <div className="flex flex-wrap gap-2 md:gap-4 items-center">
               {!editMode && (
                 <>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-booth-available"></div>
-                    <span className="text-sm text-gray-600">Свободен</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 md:w-4 md:h-4 rounded bg-booth-available"></div>
+                    <span className="text-xs md:text-sm text-gray-600">Свободен</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-booth-booked"></div>
-                    <span className="text-sm text-gray-600">Забронирован</span>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-3 h-3 md:w-4 md:h-4 rounded bg-booth-booked"></div>
+                    <span className="text-xs md:text-sm text-gray-600">Забронирован</span>
                   </div>
                 </>
               )}
@@ -1492,7 +1497,7 @@ export default function Index() {
 
           <div 
             className="relative bg-white rounded-xl p-4 border-2 border-gray-200 overflow-hidden"
-            style={{ height: '800px' }}
+            style={{ height: 'min(800px, calc(100svh - 320px))' }}
           >
             <div 
               ref={containerRef}
@@ -1502,7 +1507,8 @@ export default function Index() {
                 height: '1200px',
                 transform: `translate(${panOffset.x}px, ${panOffset.y}px) scale(${zoom})`,
                 transformOrigin: '0 0',
-                cursor: isPanning ? 'grabbing' : isMousePanning ? 'grab' : 'default'
+                cursor: isPanning ? 'grabbing' : isMousePanning ? 'grab' : 'default',
+                touchAction: 'none'
               }}
               onMouseDown={(e) => {
                 if (e.button === 0 && e.target === e.currentTarget) {
@@ -1525,6 +1531,49 @@ export default function Index() {
                 }
               }}
               onMouseUp={handleMouseUp}
+              onTouchStart={(e) => {
+                if (e.touches.length === 1) {
+                  const t = e.touches[0];
+                  touchStartRef.current = { x: t.clientX, y: t.clientY, panX: panOffset.x, panY: panOffset.y };
+                  pinchStartRef.current = null;
+                } else if (e.touches.length === 2) {
+                  const t1 = e.touches[0];
+                  const t2 = e.touches[1];
+                  const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                  const midX = (t1.clientX + t2.clientX) / 2;
+                  const midY = (t1.clientY + t2.clientY) / 2;
+                  const parent = containerRef.current?.parentElement;
+                  const rect = parent?.getBoundingClientRect();
+                  const relMidX = rect ? midX - rect.left : midX;
+                  const relMidY = rect ? midY - rect.top : midY;
+                  pinchStartRef.current = { dist, zoom, panX: panOffset.x, panY: panOffset.y, midX: relMidX, midY: relMidY };
+                  touchStartRef.current = null;
+                }
+              }}
+              onTouchMove={(e) => {
+                e.preventDefault();
+                if (e.touches.length === 1 && touchStartRef.current) {
+                  const t = e.touches[0];
+                  const dx = t.clientX - touchStartRef.current.x;
+                  const dy = t.clientY - touchStartRef.current.y;
+                  setPanOffset({ x: touchStartRef.current.panX + dx, y: touchStartRef.current.panY + dy });
+                } else if (e.touches.length === 2 && pinchStartRef.current) {
+                  const t1 = e.touches[0];
+                  const t2 = e.touches[1];
+                  const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+                  const scale = dist / pinchStartRef.current.dist;
+                  const newZoom = Math.max(0.3, Math.min(7, pinchStartRef.current.zoom * scale));
+                  const { midX, midY, panX, panY } = pinchStartRef.current;
+                  const pointX = (midX - panX) / pinchStartRef.current.zoom;
+                  const pointY = (midY - panY) / pinchStartRef.current.zoom;
+                  setZoom(newZoom);
+                  setPanOffset({ x: midX - pointX * newZoom, y: midY - pointY * newZoom });
+                }
+              }}
+              onTouchEnd={() => {
+                touchStartRef.current = null;
+                pinchStartRef.current = null;
+              }}
               onWheel={(e) => {
                 e.preventDefault();
                 const container = containerRef.current?.parentElement;

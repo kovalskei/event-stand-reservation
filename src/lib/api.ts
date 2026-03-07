@@ -148,6 +148,16 @@ export const api = {
     return response.json();
   },
 
+  async deleteEvent(eventId: string): Promise<{ success: boolean }> {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete_event', event_id: eventId }),
+    });
+    if (!response.ok) throw new Error('Failed to delete event');
+    return response.json();
+  },
+
   async saveSheetUrl(eventId: number, sheetUrl: string): Promise<{ success: boolean }> {
     const response = await fetch(API_URL, {
       method: 'POST',

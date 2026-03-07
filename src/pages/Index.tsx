@@ -455,6 +455,19 @@ export default function Index() {
     }
   };
 
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!confirm('Удалить мероприятие? Это действие нельзя отменить.')) return;
+    try {
+      await api.deleteEvent(eventId);
+      const remaining = events.filter(e => e.id !== eventId);
+      setEvents(remaining);
+      if (remaining.length > 0) setSelectedEvent(remaining[0]);
+      toast({ title: 'Мероприятие удалено' });
+    } catch {
+      toast({ title: 'Ошибка', description: 'Не удалось удалить мероприятие', variant: 'destructive' });
+    }
+  };
+
   const snapToNeighbors = (id: string, x: number, y: number, width: number, height: number) => {
     let snappedX = x;
     let snappedY = y;
@@ -1207,6 +1220,15 @@ export default function Index() {
                 >
                   <Icon name="Edit" size={16} className="mr-2" />
                   Редактировать
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => handleDeleteEvent(selectedEvent.id)}
+                  className="h-auto px-3 text-red-500 hover:text-red-700 hover:bg-red-50"
+                >
+                  <Icon name="Trash2" size={16} className="mr-2" />
+                  Удалить
                 </Button>
               </div>
             </div>

@@ -208,6 +208,25 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     'isBase64Encoded': False
                 }
             
+            if action == 'delete_event':
+                event_id = body_data.get('event_id')
+                if not event_id:
+                    return {
+                        'statusCode': 400,
+                        'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                        'body': json.dumps({'error': 'event_id is required'}),
+                        'isBase64Encoded': False
+                    }
+                cur.execute("DELETE FROM booths WHERE event_id = %s", (event_id,))
+                cur.execute("DELETE FROM events WHERE id = %s", (event_id,))
+                conn.commit()
+                return {
+                    'statusCode': 200,
+                    'headers': {'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*'},
+                    'body': json.dumps({'success': True}),
+                    'isBase64Encoded': False
+                }
+
             if action == 'update_event':
                 event_id = body_data.get('event_id')
                 name = body_data.get('name')

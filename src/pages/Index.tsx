@@ -97,6 +97,7 @@ export default function Index() {
   const [selectedBooth, setSelectedBooth] = useState<Booth | null>(null);
   const [editMode, setEditMode] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [sheetUrl, setSheetUrl] = useState('');
   const [showSheetDialog, setShowSheetDialog] = useState(false);
   const [showMapUploadDialog, setShowMapUploadDialog] = useState(false);
@@ -238,6 +239,8 @@ export default function Index() {
       console.error('Failed to load events:', error);
       setEvents(mockEvents);
       setSelectedEvent(mockEvents[0]);
+    } finally {
+      setInitialLoading(false);
     }
   };
 
@@ -1138,6 +1141,17 @@ export default function Index() {
       localStorage.setItem('userEmail', email);
       window.location.reload();
     }} />;
+  }
+
+  if (initialLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+          <p className="text-gray-500 text-sm">Загружаем мероприятия...</p>
+        </div>
+      </div>
+    );
   }
 
   return (

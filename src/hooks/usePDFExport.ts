@@ -53,25 +53,33 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
         mapImg.src = selectedEvent.mapUrl;
       });
 
-      // Заголовок рисуем через jsPDF — не на canvas
-      const HEADER_HEIGHT = 18; // мм
       const marginX = 10;
       const marginY = 5;
 
-      // Заголовок
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(14);
-      pdf.setTextColor(0, 0, 0);
-      const titleLines = pdf.splitTextToSize(selectedEvent.name, pageWidth - marginX * 2);
-      pdf.text(titleLines, pageWidth / 2, marginY + 7, { align: 'center' });
-
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(9);
-      pdf.setTextColor(100, 100, 100);
-      pdf.text(`${selectedEvent.date} • ${selectedEvent.location}`, pageWidth / 2, marginY + 13, { align: 'center' });
+      // Заголовок на canvas (кириллица)
+      const pxPerMm = 3.78;
+      const headerCanvasW = Math.round((pageWidth - marginX * 2) * pxPerMm * 2);
+      const headerCanvasH = 120;
+      const headerCanvas = document.createElement('canvas');
+      headerCanvas.width = headerCanvasW;
+      headerCanvas.height = headerCanvasH;
+      const hCtx = headerCanvas.getContext('2d')!;
+      hCtx.fillStyle = '#ffffff';
+      hCtx.fillRect(0, 0, headerCanvasW, headerCanvasH);
+      hCtx.fillStyle = '#000000';
+      hCtx.font = `bold ${Math.round(headerCanvasW / 30)}px Arial`;
+      hCtx.textAlign = 'center';
+      hCtx.textBaseline = 'top';
+      hCtx.fillText(selectedEvent.name, headerCanvasW / 2, 8);
+      hCtx.fillStyle = '#666666';
+      hCtx.font = `${Math.round(headerCanvasW / 55)}px Arial`;
+      hCtx.fillText(`${selectedEvent.date} • ${selectedEvent.location}`, headerCanvasW / 2, 70);
+      const headerImgData = headerCanvas.toDataURL('image/png');
+      const HEADER_HEIGHT_MM = 18;
+      pdf.addImage(headerImgData, 'PNG', marginX, marginY, pageWidth - marginX * 2, HEADER_HEIGHT_MM);
 
       // Область карты — под заголовком
-      const mapAreaY = marginY + HEADER_HEIGHT;
+      const mapAreaY = marginY + HEADER_HEIGHT_MM;
       const availableWidth = pageWidth - marginX * 2;
       const availableHeight = pageHeight - mapAreaY - 5;
 
@@ -206,13 +214,21 @@ export const usePDFExport = ({ containerRef, selectedEvent, booths, positions }:
 
           pdf.addPage();
 
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(13);
-          pdf.setTextColor(0, 0, 0);
-          pdf.text('Детальная схема стендов', pageWidth / 2, marginY + 7, { align: 'center' });
+          const p2HeaderCanvas = document.createElement('canvas');
+          p2HeaderCanvas.width = headerCanvasW;
+          p2HeaderCanvas.height = 80;
+          const p2HCtx = p2HeaderCanvas.getContext('2d')!;
+          p2HCtx.fillStyle = '#ffffff';
+          p2HCtx.fillRect(0, 0, headerCanvasW, 80);
+          p2HCtx.fillStyle = '#000000';
+          p2HCtx.font = `bold ${Math.round(headerCanvasW / 30)}px Arial`;
+          p2HCtx.textAlign = 'center';
+          p2HCtx.textBaseline = 'top';
+          p2HCtx.fillText('Детальная схема стендов', headerCanvasW / 2, 8);
+          pdf.addImage(p2HeaderCanvas.toDataURL('image/png'), 'PNG', marginX, marginY, pageWidth - marginX * 2, 12);
 
           const zoomAspect = zoomWidth / zoomHeight;
-          const zoomAreaY = marginY + HEADER_HEIGHT;
+          const zoomAreaY = marginY + HEADER_HEIGHT_MM;
           let zoomPdfWidth = pageWidth - marginX * 2;
           let zoomPdfHeight = zoomPdfWidth / zoomAspect;
           if (zoomPdfHeight > pageHeight - zoomAreaY - 5) {

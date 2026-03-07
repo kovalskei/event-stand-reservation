@@ -11,7 +11,6 @@ import { api } from '@/lib/api';
 import { userStorage } from '@/lib/userStorage';
 import Icon from '@/components/ui/icon';
 import { usePDFExport } from '@/hooks/usePDFExport';
-import { logImageDimensions } from '@/utils/getImageDimensions';
 
 type BoothStatus = 'available' | 'booked' | 'unavailable';
 
@@ -144,7 +143,7 @@ export default function Index() {
   const SNAP_THRESHOLD = 1.5;
 
   useEffect(() => {
-    const centerMap = () => {
+    const fitMap = () => {
       const parent = containerRef.current?.parentElement;
       if (!parent) return;
       
@@ -152,15 +151,22 @@ export default function Index() {
       const containerWidth = 2400;
       const containerHeight = 1200;
       
-      const centerX = (parentRect.width - containerWidth) / 2;
-      const centerY = (parentRect.height - containerHeight) / 2;
+      const scaleX = parentRect.width / containerWidth;
+      const scaleY = parentRect.height / containerHeight;
+      const fitZoom = Math.min(scaleX, scaleY, 1);
       
+      const scaledW = containerWidth * fitZoom;
+      const scaledH = containerHeight * fitZoom;
+      const centerX = (parentRect.width - scaledW) / 2;
+      const centerY = (parentRect.height - scaledH) / 2;
+      
+      setZoom(fitZoom);
       setPanOffset({ x: centerX, y: centerY });
     };
     
-    centerMap();
-    window.addEventListener('resize', centerMap);
-    return () => window.removeEventListener('resize', centerMap);
+    fitMap();
+    window.addEventListener('resize', fitMap);
+    return () => window.removeEventListener('resize', fitMap);
   }, []);
 
   useEffect(() => {
@@ -169,10 +175,7 @@ export default function Index() {
     }
   }, [userEmail]);
 
-  // Log image dimensions for debugging
-  useEffect(() => {
-    logImageDimensions('https://cdn.poehali.dev/files/84989299-cef8-4fc0-a2cd-b8106a39b96d.png');
-  }, []);
+
 
   const loadEventsFromBackend = async () => {
     if (!userEmail) return;
@@ -1430,10 +1433,19 @@ export default function Index() {
                       <Icon name="ZoomIn" size={16} />
                     </Button>
                     <Button 
-                      onClick={() => { setZoom(1); setPanOffset({ x: 0, y: 0 }); }} 
+                      onClick={() => {
+                        const parent = containerRef.current?.parentElement;
+                        if (!parent) return;
+                        const r = parent.getBoundingClientRect();
+                        const fitZoom = Math.min(r.width / 2400, r.height / 1200, 1);
+                        const centerX = (r.width - 2400 * fitZoom) / 2;
+                        const centerY = (r.height - 1200 * fitZoom) / 2;
+                        setZoom(fitZoom);
+                        setPanOffset({ x: centerX, y: centerY });
+                      }} 
                       variant="outline" 
                       size="sm"
-                      title="Сбросить масштаб"
+                      title="Вписать карту"
                       className="px-2"
                     >
                       <Icon name="Maximize2" size={16} />

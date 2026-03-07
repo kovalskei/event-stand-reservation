@@ -86,7 +86,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         }).encode('utf-8')
         
         req = urllib.request.Request(url, data=data)
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req, timeout=25) as response:
             result = json.loads(response.read().decode('utf-8'))
         
         if result.get('success'):

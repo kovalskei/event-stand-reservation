@@ -105,7 +105,7 @@ export default function BoothMapView({
           onMouseUp={onMouseUp}
         >
           <img 
-            src={selectedEvent.mapUrl} 
+            src={selectedEvent.mapUrl ? `${selectedEvent.mapUrl}?t=${new Date(selectedEvent.updatedAt || Date.now()).getTime()}` : selectedEvent.mapUrl} 
             alt="План павильона" 
             className="w-full h-full object-contain pointer-events-none"
           />

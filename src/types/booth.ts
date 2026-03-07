@@ -25,6 +25,7 @@ export interface Event {
   location: string;
   mapUrl: string;
   sheetId: string;
+  updatedAt?: string;
 }
 
 export const mockEvents: Event[] = [

@@ -40,6 +40,7 @@ interface Event {
   location: string;
   mapUrl: string;
   sheetId: string;
+  updatedAt?: string;
 }
 
 const mockEvents: Event[] = [
@@ -196,6 +197,7 @@ export default function Index() {
         location: e.location || '',
         mapUrl: e.map_url || '',
         sheetId: '',
+        updatedAt: e.updated_at || '',
       }));
       console.log('Mapped events:', mappedEvents);
       setEvents(mappedEvents);

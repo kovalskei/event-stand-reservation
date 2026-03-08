@@ -72,6 +72,16 @@
       "bodyMatcher": "partial"
     },
     {
+      "name": "Get booths for event (public)",
+      "method": "GET",
+      "path": "/?event_id=1",
+      "expectedStatus": 200,
+      "expectedBody": {
+        "booths": []
+      },
+      "bodyMatcher": "partial"
+    },
+    {
       "name": "Save booths",
       "method": "POST",
       "body": {

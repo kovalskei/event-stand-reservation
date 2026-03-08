@@ -50,7 +50,7 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 booths = cur.fetchall()
                 
                 cur.execute(
-                    "SELECT sheet_url FROM events WHERE id = %s",
+                    "SELECT id, name, date, location, description, map_url, sheet_url FROM events WHERE id = %s",
                     (event_id,)
                 )
                 event_data = cur.fetchone()
@@ -63,7 +63,8 @@ def handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                     },
                     'body': json.dumps({
                         'booths': [dict(b) for b in booths],
-                        'sheet_url': event_data['sheet_url'] if event_data else None
+                        'sheet_url': event_data['sheet_url'] if event_data else None,
+                        'event': dict(event_data) if event_data else None
                     }, default=str),
                     'isBase64Encoded': False
                 }

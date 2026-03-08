@@ -91,6 +91,8 @@ const defaultPositions: BoothPosition[] = [
 
 export default function Index() {
   const { userEmail, logout } = useAuth();
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareCopied, setShareCopied] = useState<'link' | 'widget' | null>(null);
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [selectedEvent, setSelectedEvent] = useState<Event>(mockEvents[0]);
   const [booths, setBooths] = useState<Booth[]>(initialBooths);
@@ -1164,6 +1166,13 @@ export default function Index() {
               <h1 className="text-xl md:text-4xl font-bold text-gray-900 leading-tight">Бронирование стендов</h1>
             </div>
             <div className="flex items-center gap-2">
+              <Button onClick={() => setShowShareDialog(true)} variant="outline" size="sm" className="hidden md:flex">
+                <Icon name="Share2" size={16} className="mr-2" />
+                Поделиться
+              </Button>
+              <Button onClick={() => setShowShareDialog(true)} variant="outline" size="sm" className="md:hidden px-2">
+                <Icon name="Share2" size={16} />
+              </Button>
               <Button onClick={() => setShowSheetDialog(true)} variant="outline" size="sm" className="hidden md:flex">
                 <Icon name="Sheet" size={16} className="mr-2" />
                 Синхронизация с Google Таблицами
@@ -2092,6 +2101,87 @@ export default function Index() {
               <Button onClick={() => setShowMapUploadDialog(false)} variant="outline">
                 Закрыть
               </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-xl flex items-center gap-2">
+              <Icon name="Share2" size={22} className="text-primary" />
+              Публичная карта для клиентов
+            </DialogTitle>
+            <DialogDescription>
+              Поделитесь интерактивной картой стендов — клиенты смогут просматривать доступные места
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {(() => {
+              const params = new URLSearchParams({
+                name: selectedEvent.name,
+                date: selectedEvent.date,
+                location: selectedEvent.location,
+              });
+              const publicUrl = `${window.location.origin}/map/${selectedEvent.id}?${params}`;
+              const widgetUrl = `${window.location.origin}/map/${selectedEvent.id}?widget=1&${params}`;
+              const widgetCode = `<iframe\n  src="${widgetUrl}"\n  width="100%"\n  height="500"\n  frameborder="0"\n  style="border-radius:12px;border:1px solid #e2e8f0"\n></iframe>`;
+              return (
+                <>
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Прямая ссылка</label>
+                    <div className="flex gap-2">
+                      <input
+                        readOnly
+                        value={publicUrl}
+                        className="flex-1 px-3 py-2 border-2 border-gray-200 rounded-lg bg-slate-50 text-sm text-gray-700 focus:outline-none"
+                      />
+                      <Button
+                        size="sm"
+                        variant={shareCopied === 'link' ? 'default' : 'outline'}
+                        onClick={() => {
+                          navigator.clipboard.writeText(publicUrl);
+                          setShareCopied('link');
+                          setTimeout(() => setShareCopied(null), 2000);
+                        }}
+                      >
+                        <Icon name={shareCopied === 'link' ? 'Check' : 'Copy'} size={16} />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium text-gray-700">Код виджета для вашего сайта</label>
+                    <textarea
+                      readOnly
+                      rows={4}
+                      value={widgetCode}
+                      className="w-full px-3 py-2 border-2 border-gray-200 rounded-lg bg-slate-50 text-sm text-gray-600 font-mono focus:outline-none resize-none"
+                    />
+                    <Button
+                      size="sm"
+                      variant={shareCopied === 'widget' ? 'default' : 'outline'}
+                      onClick={() => {
+                        navigator.clipboard.writeText(widgetCode);
+                        setShareCopied('widget');
+                        setTimeout(() => setShareCopied(null), 2000);
+                      }}
+                      className="w-full"
+                    >
+                      <Icon name={shareCopied === 'widget' ? 'Check' : 'Code'} size={16} className="mr-2" />
+                      {shareCopied === 'widget' ? 'Скопировано!' : 'Скопировать код виджета'}
+                    </Button>
+                  </div>
+                </>
+              );
+            })()}
+
+            <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+              <div className="flex items-start gap-2">
+                <Icon name="Info" size={16} className="text-primary mt-0.5 shrink-0" />
+                <p className="text-xs text-gray-600">Клиенты видят карту в режиме просмотра: могут нажать на стенд и увидеть его статус, размер, цену. Редактировать ничего не могут.</p>
+              </div>
             </div>
           </div>
         </DialogContent>

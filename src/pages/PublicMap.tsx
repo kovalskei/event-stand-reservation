@@ -52,6 +52,7 @@ export default function PublicMap() {
   const urlName = searchParams.get('name');
   const urlDate = searchParams.get('date');
   const urlLocation = searchParams.get('location');
+  const urlMapUrl = searchParams.get('mapUrl');
 
   useEffect(() => {
     if (!eventId) return;
@@ -188,7 +189,7 @@ export default function PublicMap() {
     );
   }
 
-  const mapUrl = event?.map_url;
+  const mapUrl = event?.map_url || urlMapUrl || null;
   const displayName = event?.name || urlName || 'Карта выставки';
   const displayDate = event?.date || urlDate || '';
   const displayLocation = event?.location || urlLocation || '';

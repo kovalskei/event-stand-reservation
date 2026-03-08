@@ -2123,6 +2123,7 @@ export default function Index() {
                 name: selectedEvent.name,
                 date: selectedEvent.date,
                 location: selectedEvent.location,
+                ...(selectedEvent.mapUrl ? { mapUrl: selectedEvent.mapUrl } : {}),
               });
               const publicUrl = `${window.location.origin}/map/${selectedEvent.id}?${params}`;
               const widgetUrl = `${window.location.origin}/map/${selectedEvent.id}?widget=1&${params}`;

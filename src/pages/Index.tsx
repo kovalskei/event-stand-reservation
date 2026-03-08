@@ -2119,14 +2119,8 @@ export default function Index() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             {(() => {
-              const params = new URLSearchParams({
-                name: selectedEvent.name,
-                date: selectedEvent.date,
-                location: selectedEvent.location,
-                ...(selectedEvent.mapUrl ? { mapUrl: selectedEvent.mapUrl } : {}),
-              });
-              const publicUrl = `${window.location.origin}/map/${selectedEvent.id}?${params}`;
-              const widgetUrl = `${window.location.origin}/map/${selectedEvent.id}?widget=1&${params}`;
+              const publicUrl = `${window.location.origin}/map/${selectedEvent.id}`;
+              const widgetUrl = `${window.location.origin}/map/${selectedEvent.id}?widget=1`;
               const widgetCode = `<iframe\n  src="${widgetUrl}"\n  width="100%"\n  height="500"\n  frameborder="0"\n  style="border-radius:12px;border:1px solid #e2e8f0"\n></iframe>`;
               return (
                 <>
